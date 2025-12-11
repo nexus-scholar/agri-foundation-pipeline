@@ -105,6 +105,21 @@ data/processed/dataset/
 
 Each extraction also emits `{Dataset}_renamed_files.json` if any filenames were truncated to satisfy Windows path constraints.
 
+## Using Processed Data in ML Pipelines
+
+Load metadata and image paths with the new dataset loader:
+
+```python
+from pipeline.dataset_loader import DatasetLoader
+
+loader = DatasetLoader("plantvillage")
+print(loader.summary())
+df = loader.to_dataframe()
+# iterate through resolved image paths
+for path in loader.iter_image_paths():
+    ...
+```
+
 ## Testing
 
 ```bash
