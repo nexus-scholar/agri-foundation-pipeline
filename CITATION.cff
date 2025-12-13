@@ -1,0 +1,43 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "Hybrid Warm-Start FixMatch for Partial Domain Adaptation in Agricultural Edge AI"
+abstract: >-
+  A framework for bridging the Lab-to-Field generalization gap in plant disease
+  detection using Partial Domain Adaptation. Combines Active Learning with
+  FixMatch semi-supervised learning to achieve 63-65% field accuracy with only
+  50 labeled samples, running at 7ms inference on edge hardware.
+version: 1.0.0
+date-released: 2025-12-13
+license: MIT
+repository-code: "https://github.com/[username]/dataset-processing"
+keywords:
+  - partial-domain-adaptation
+  - active-learning
+  - semi-supervised-learning
+  - plant-disease-detection
+  - edge-ai
+  - fixmatch
+  - precision-agriculture
+  - computer-vision
+  - deep-learning
+  - mobilenet
+authors:
+  - family-names: "[Last Name]"
+    given-names: "[First Name]"
+    affiliation: "[University/Institution]"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+preferred-citation:
+  type: article
+  title: "Bridging the Lab-to-Field Gap: Partial Domain Adaptation for Agricultural Edge AI"
+  authors:
+    - family-names: "[Last Name]"
+      given-names: "[First Name]"
+  journal: "[Target Journal Name]"
+  year: 2025
+  volume: 0
+  issue: 0
+  start: 0
+  end: 0
+  doi: "10.xxxx/xxxxx"
+
