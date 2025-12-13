@@ -1,7 +1,6 @@
 .idea/
 data/raw
 data/processed
-models/
 logs/
 __pycache__/
 *.pyc
