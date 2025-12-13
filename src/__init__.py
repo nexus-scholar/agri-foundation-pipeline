@@ -10,141 +10,41 @@ Modules:
 - models: Neural network architectures
 - strategies: Active learning and augmentation strategies
 - utils: Metrics and utilities
+
+Note: Submodules are imported lazily to avoid circular imports.
+Import directly from submodules for specific functionality:
+    from src.data import load_data_modules
+    from src.models import get_model
 """
-
-from . import config
-from . import data
-from . import models
-from . import strategies
-from . import utils
-
-# Convenient imports
-from .config import (
-    TrainingConfig,
-    ActiveLearningConfig,
-    CutMixConfig,
-    ExperimentConfig,
-    PROJECT_ROOT,
-    DATA_DIR,
-    MODELS_DIR,
-    RESULTS_DIR,
-    LOGS_DIR,
-    PROCESSED_DIR,
-    PLANTVILLAGE_DIR,
-    PLANTDOC_DIR,
-    TOMATO_CLASSES,
-    ensure_dir,
-)
-
-from .data import (
-    load_data_modules,
-    create_canonical_datasets,
-    CanonicalImageFolder,
-    resolve_classes_for_crop,
-    get_transforms,
-    get_train_transforms,
-    get_val_transforms,
-)
-
-from .models import (
-    get_model,
-    get_edge_model,
-    create_model,
-    create_mobilenetv3,
-    load_model,
-    save_model,
-    get_model_info,
-    SUPPORTED_MODELS,
-)
-
-from .strategies import (
-    select_samples,
-    ActiveLearner,
-    train_fixmatch,
-    FixMatchConfig,
-    run_hybrid_warmstart,
-)
-
-from .utils import (
-    FilteredImageFolder,
-    create_data_loaders,
-    Trainer,
-    evaluate_accuracy,
-    ExperimentLogger,
-    Colors,
-    print_header,
-    print_section,
-    print_config,
-)
-
-from .utils.device import (
-    get_device,
-    set_seed,
-)
 
 __version__ = "1.0.0"
 
+# Define what's available - actual imports happen when accessed
 __all__ = [
-    # Modules
     'config',
     'data',
     'models',
     'strategies',
     'utils',
-
-    # Config
-    'TrainingConfig',
-    'ActiveLearningConfig',
-    'CutMixConfig',
-    'ExperimentConfig',
-    'PROJECT_ROOT',
-    'DATA_DIR',
-    'MODELS_DIR',
-    'RESULTS_DIR',
-    'LOGS_DIR',
-    'PROCESSED_DIR',
-    'PLANTVILLAGE_DIR',
-    'PLANTDOC_DIR',
-    'TOMATO_CLASSES',
-    'ensure_dir',
-
-    # Data
-    'load_data_modules',
-    'create_canonical_datasets',
-    'CanonicalImageFolder',
-    'resolve_classes_for_crop',
-    'get_transforms',
-    'get_train_transforms',
-    'get_val_transforms',
-
-    # Models
-    'get_model',
-    'get_edge_model',
-    'create_model',
-    'create_mobilenetv3',
-    'load_model',
-    'save_model',
-    'get_model_info',
-    'SUPPORTED_MODELS',
-
-    # Strategies
-    'select_samples',
-    'ActiveLearner',
-    'train_fixmatch',
-    'FixMatchConfig',
-    'run_hybrid_warmstart',
-
-    # Utils
-    'FilteredImageFolder',
-    'create_data_loaders',
-    'Trainer',
-    'evaluate_accuracy',
-    'ExperimentLogger',
-    'Colors',
-    'print_header',
-    'print_section',
-    'print_config',
-    'get_device',
-    'set_seed',
 ]
+
+
+def __getattr__(name):
+    """Lazy import of submodules to avoid circular imports."""
+    if name == 'config':
+        from . import config
+        return config
+    elif name == 'data':
+        from . import data
+        return data
+    elif name == 'models':
+        from . import models
+        return models
+    elif name == 'strategies':
+        from . import strategies
+        return strategies
+    elif name == 'utils':
+        from . import utils
+        return utils
+    raise AttributeError(f"module 'src' has no attribute '{name}'")
 
