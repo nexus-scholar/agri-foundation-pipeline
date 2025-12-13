@@ -46,7 +46,8 @@ class CropConfig:
 # TOMATO CONFIGURATION
 # =============================================================================
 # PlantVillage has 10 tomato classes, PlantDoc has 9
-# Key mismatch: spider_mites naming differs, target_spot and yellow_curl_virus only in PV
+# Mappings: yellow_curl_virus (PV) = yellow_virus (PD)
+# Excluded: spider_mites (naming differs + only 2 samples in PD), target_spot (not in PD)
 
 TOMATO_SOURCE_CLASSES = [
     "tomato_bacterial_spot",
@@ -58,7 +59,7 @@ TOMATO_SOURCE_CLASSES = [
     "tomato_septoria_spot",
     "tomato_spider_mites_two_spotted_spider_mite",  # PV naming
     "tomato_target_spot",
-    "tomato_yellow_curl_virus",
+    "tomato_yellow_curl_virus",  # PV naming -> maps to yellow_virus
 ]
 
 TOMATO_TARGET_CLASSES = [
@@ -70,10 +71,10 @@ TOMATO_TARGET_CLASSES = [
     "tomato_mosaic_virus",
     "tomato_septoria_spot",
     "tomato_two_spotted_spider_mites",  # PD naming (different!)
-    "tomato_yellow_virus",  # PD naming (different!)
+    "tomato_yellow_virus",  # PD naming -> same as yellow_curl_virus
 ]
 
-# Canonical names we'll use (intersection with normalization)
+# Canonical names we'll use (8 classes now)
 TOMATO_CANONICAL = [
     "tomato_bacterial_spot",
     "tomato_early_blight",
@@ -82,6 +83,7 @@ TOMATO_CANONICAL = [
     "tomato_mold",
     "tomato_mosaic_virus",
     "tomato_septoria_spot",
+    "tomato_yellow_leaf_curl",  # Canonical name for yellow_curl_virus / yellow_virus
 ]
 
 # Mappings to canonical
@@ -93,10 +95,10 @@ TOMATO_SOURCE_MAP = {
     "tomato_mold": "tomato_mold",
     "tomato_mosaic_virus": "tomato_mosaic_virus",
     "tomato_septoria_spot": "tomato_septoria_spot",
-    # These don't have equivalents in target - exclude from canonical
-    "tomato_spider_mites_two_spotted_spider_mite": None,  # Exclude (only 2 in target)
+    "tomato_yellow_curl_virus": "tomato_yellow_leaf_curl",  # Map to canonical
+    # Excluded classes
+    "tomato_spider_mites_two_spotted_spider_mite": None,  # Only 2 samples in target
     "tomato_target_spot": None,  # Not in target
-    "tomato_yellow_curl_virus": None,  # Different naming, exclude for safety
 }
 
 TOMATO_TARGET_MAP = {
@@ -107,9 +109,9 @@ TOMATO_TARGET_MAP = {
     "tomato_mold": "tomato_mold",
     "tomato_mosaic_virus": "tomato_mosaic_virus",
     "tomato_septoria_spot": "tomato_septoria_spot",
-    # These are excluded
+    "tomato_yellow_virus": "tomato_yellow_leaf_curl",  # Map to canonical
+    # Excluded classes
     "tomato_two_spotted_spider_mites": None,  # Only 2 samples
-    "tomato_yellow_virus": None,  # Different from source naming
 }
 
 TOMATO_CONFIG = CropConfig(
@@ -119,8 +121,8 @@ TOMATO_CONFIG = CropConfig(
     source_mapping=TOMATO_SOURCE_MAP,
     target_mapping=TOMATO_TARGET_MAP,
     canonical_classes=TOMATO_CANONICAL,
-    source_only_classes=["tomato_spider_mites_two_spotted_spider_mite", "tomato_target_spot", "tomato_yellow_curl_virus"],
-    target_only_classes=["tomato_two_spotted_spider_mites", "tomato_yellow_virus"],
+    source_only_classes=["tomato_spider_mites_two_spotted_spider_mite", "tomato_target_spot"],
+    target_only_classes=["tomato_two_spotted_spider_mites"],
 )
 
 
