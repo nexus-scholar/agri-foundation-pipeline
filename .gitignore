@@ -8,3 +8,13 @@ __pycache__/
 .DS_Store
 .vscode/
 .ipynb_checkpoints/
+
+# Experiment results (large files, regenerated)
+results/experiments/
+results/archived_experiments/
+results/analysis/
+results/paper_figures/
+
+# Model weights
+*.pth
+data/models/
