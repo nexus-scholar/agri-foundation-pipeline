@@ -271,10 +271,13 @@ def run_baseline(args, device):
     print(f"\n  Training for {args.epochs} epochs...", flush=True)
     best_val_acc = 0.0
 
+    num_batches = len(train_loader)
+    report_every = max(1, num_batches // 4)  # Report 4 times per epoch
+
     for epoch in range(args.epochs):
         model.train()
         epoch_loss = 0.0
-        for images, labels in train_loader:
+        for batch_idx, (images, labels) in enumerate(train_loader):
             images, labels = images.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(images)
@@ -283,12 +286,17 @@ def run_baseline(args, device):
             optimizer.step()
             epoch_loss += loss.item()
 
+            # Progress report within epoch
+            if (batch_idx + 1) % report_every == 0 or batch_idx == num_batches - 1:
+                pct = 100 * (batch_idx + 1) / num_batches
+                print(f"    Epoch {epoch+1}/{args.epochs} | Batch {batch_idx+1}/{num_batches} ({pct:.0f}%) | Loss: {loss.item():.4f}", flush=True)
+
         avg_loss = epoch_loss / len(train_loader)
         val_acc = evaluate(model, val_loader, device)
 
         # Log epoch metrics
         recorder.log_epoch(epoch + 1, avg_loss, val_acc)
-        print(f"    Epoch {epoch+1}/{args.epochs} | Loss: {avg_loss:.4f} | Val Acc: {val_acc:.2f}%", flush=True)
+        print(f"    Epoch {epoch+1}/{args.epochs} DONE | Avg Loss: {avg_loss:.4f} | Val Acc: {val_acc:.2f}%", flush=True)
 
         # Save best model
         if val_acc > best_val_acc:
