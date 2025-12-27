@@ -53,6 +53,11 @@ def create_model_by_name(model_type, num_classes, pretrained=True):
         return create_model(num_classes, pretrained)
     elif model_type.startswith('mobilevit'):
         return create_mobilevit(model_type, num_classes, pretrained)
+    elif model_type == 'dinov2_giant':
+        if not HAS_TIMM:
+            raise RuntimeError("timm library required. Install with: pip install timm")
+        # DINOv2 Giant (ViT-g/14)
+        return timm.create_model('vit_giant_patch14_dinov2.lvd142m', pretrained=pretrained, num_classes=num_classes)
     else:
         raise ValueError(f"Unknown model type: {model_type}")
 
@@ -92,7 +97,7 @@ def train_model(model, train_loader, val_loader, device, epochs=10, lr=0.001):
 def main():
     parser = argparse.ArgumentParser(description="EXP-08: Architecture Check")
     parser.add_argument('--model', type=str, default='mobilenetv3',
-                        choices=['mobilenetv3', 'mobilevit_s', 'mobilevit_xs'])
+                        choices=['mobilenetv3', 'mobilevit_s', 'mobilevit_xs', 'dinov2_giant'])
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--batch-size', type=int, default=16)
     parser.add_argument('--seed', type=int, default=42)
@@ -101,7 +106,7 @@ def main():
 
     print_header("ARCHITECTURE CHECK", 8)
 
-    if args.model.startswith('mobilevit') and not HAS_TIMM:
+    if (args.model.startswith('mobilevit') or args.model == 'dinov2_giant') and not HAS_TIMM:
         print(f"{Colors.RED}Error: timm not installed. Install with: pip install timm{Colors.RESET}")
         return 1
 
@@ -154,4 +159,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

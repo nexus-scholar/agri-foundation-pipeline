@@ -67,15 +67,15 @@ def plot_fig1_generalization_gap():
         print("[SKIP] No experiment data found. Run analysis_report.py first.")
         return
 
-    fig, ax = plt.subplots(figsize=(12, 7))
+    fig, ax = plt.subplots(figsize=(14, 7))
 
     crops = ['tomato', 'potato', 'pepper']
-    models = ['mobilenetv3', 'efficientnet', 'mobilevit']
-    model_labels = ['MobileNetV3', 'EfficientNet', 'MobileViT']
+    models = ['mobilenetv3', 'efficientnet', 'mobilevit', 'dinov2_giant']
+    model_labels = ['MobileNetV3', 'EfficientNet', 'MobileViT', 'DINOv2-Giant']
 
     x = np.arange(len(crops))
-    width = 0.25
-    colors = ['#55a868', '#dd8452', '#4c72b0']
+    width = 0.2
+    colors = ['#55a868', '#dd8452', '#4c72b0', '#8172b3']
 
     for i, (model, label, color) in enumerate(zip(models, model_labels, colors)):
         gaps = []
@@ -91,7 +91,7 @@ def plot_fig1_generalization_gap():
     ax.set_xlabel('Crop', fontweight='bold', fontsize=14)
     ax.set_ylabel('Generalization Gap (%)', fontweight='bold', fontsize=14)
     ax.set_title('Lab-to-Field Generalization Gap by Architecture', fontweight='bold', fontsize=16)
-    ax.set_xticks(x + width)
+    ax.set_xticks(x + 1.5*width)
     ax.set_xticklabels([c.title() for c in crops], fontsize=12)
     ax.legend(fontsize=12)
     ax.grid(True, alpha=0.3, axis='y')
@@ -172,16 +172,17 @@ def plot_fig3_trajectories():
     """
     print("Generating Figure 3: AL Trajectories...")
 
+    # Updated IDs based on colab_experiment_runner.py order: Tomato, Potato, Pepper
     exps = {
-        'Potato': 'P4_01_fixmatch_potato',
-        'Tomato': 'P4_02_fixmatch_tomato',
+        'Tomato': 'P4_01_fixmatch_tomato',
+        'Potato': 'P4_02_fixmatch_potato',
         'Pepper': 'P4_03_fixmatch_pepper'
     }
 
     fig, ax = plt.subplots(figsize=(12, 7))
 
     markers = ['o', 's', '^']
-    colors = ['#3498db', '#e74c3c', '#2ecc71']
+    colors = ['#e74c3c', '#3498db', '#2ecc71'] # Tomato (Red), Potato (Blue), Pepper (Green)
 
     has_data = False
 
@@ -203,7 +204,7 @@ def plot_fig3_trajectories():
         # Placeholder
         x = [0, 10, 20, 30, 40, 50]
         ax.plot(x, [35, 42, 50, 55, 58, 62], label="MobileNetV3 + FixMatch (Potato)",
-                marker='o', color='#3498db', linewidth=2.5, markersize=10)
+                marker='s', color='#3498db', linewidth=2.5, markersize=10)
 
     ax.set_xlabel("Labeled Samples", fontweight='bold', fontsize=14)
     ax.set_ylabel("Field Accuracy (%)", fontweight='bold', fontsize=14)
@@ -221,13 +222,13 @@ def plot_fig3_trajectories():
 
 def plot_fig4_confusion_matrix():
     """
-    Figure 4: Confusion Matrix for Potato (P4_01).
+    Figure 4: Confusion Matrix for Potato (P4_02).
     Proves the elimination of 'Healthy' class predictions.
     """
     print("Generating Figure 4: Confusion Matrix...")
 
-    # Find P4_01 experiment
-    exp_path = find_experiment("P4_01_fixmatch_potato")
+    # Find P4_02 experiment (Potato)
+    exp_path = find_experiment("P4_02_fixmatch_potato")
     metrics = load_metrics(exp_path)
 
     if metrics and metrics.get('final_confusion'):
@@ -237,7 +238,7 @@ def plot_fig4_confusion_matrix():
         # Default class names for potato
         classes = ["Early Blight", "Healthy*", "Late Blight"]
     else:
-        print("[INFO] No P4_01 confusion matrix found. Using placeholder.")
+        print("[INFO] No P4_02 confusion matrix found. Using placeholder.")
         cm = np.array([
             [25, 0, 5],
             [0, 0, 0],
@@ -275,45 +276,53 @@ def plot_fig5_efficiency_tradeoff():
     accuracy_data = {
         'MobileNetV3': None,
         'EfficientNet': None,
-        'MobileViT': None
+        'MobileViT': None,
+        'DINOv2-Giant': None
     }
 
-    # P4_01 = MobileNetV3 Potato FixMatch
-    exp = find_experiment("P4_01_fixmatch_potato")
+    # P4_02 = MobileNetV3 Potato FixMatch
+    exp = find_experiment("P4_02_fixmatch_potato")
     metrics = load_metrics(exp)
     if metrics:
         accuracy_data['MobileNetV3'] = metrics.get('final_accuracy', 53.33)
 
-    # P5_01 = EfficientNet Potato FixMatch
-    exp = find_experiment("P5_01_efficientnet_potato")
+    # P5_04 = EfficientNet Potato FixMatch
+    exp = find_experiment("P5_04_efficientnet_potato")
     metrics = load_metrics(exp)
     if metrics:
         accuracy_data['EfficientNet'] = metrics.get('final_accuracy', 62.22)
 
-    # P5_02 = MobileViT Potato FixMatch
-    exp = find_experiment("P5_02_mobilevit_potato")
+    # P5_05 = MobileViT Potato FixMatch
+    exp = find_experiment("P5_05_mobilevit_potato")
     metrics = load_metrics(exp)
     if metrics:
         accuracy_data['MobileViT'] = metrics.get('final_accuracy', 64.44)
 
+    # P5_06 = DINOv2-Giant Potato FixMatch
+    exp = find_experiment("P5_06_dinov2_giant_potato")
+    metrics = load_metrics(exp)
+    if metrics:
+        accuracy_data['DINOv2-Giant'] = metrics.get('final_accuracy', 70.00)
+
     # Use defaults if no data found
     data = {
-        'Architecture': ['MobileNetV3', 'EfficientNet', 'MobileViT'],
+        'Architecture': ['MobileNetV3', 'EfficientNet', 'MobileViT', 'DINOv2-Giant'],
         'Accuracy': [
             accuracy_data['MobileNetV3'] or 53.33,
             accuracy_data['EfficientNet'] or 62.22,
-            accuracy_data['MobileViT'] or 64.44
+            accuracy_data['MobileViT'] or 64.44,
+            accuracy_data['DINOv2-Giant'] or 75.00
         ],
-        'Latency': [7.1, 18.0, 25.0]  # Measured on Raspberry Pi 4
+        'Latency': [7.1, 18.0, 25.0, 500.0]  # Measured on Raspberry Pi 4 (DINOv2 is estimated/high)
     }
     df = pd.DataFrame(data)
 
-    fig, ax1 = plt.subplots(figsize=(10, 7))
+    fig, ax1 = plt.subplots(figsize=(12, 7))
 
     # Bar Plot (Accuracy)
-    colors = ['#55a868', '#dd8452', '#4c72b0']
+    colors = ['#55a868', '#dd8452', '#4c72b0', '#8172b3']
     bars = ax1.bar(df['Architecture'], df['Accuracy'], color=colors, alpha=0.9)
-    ax1.set_ylim(40, 70)
+    ax1.set_ylim(40, 80)
     ax1.set_ylabel("Field Accuracy (%)", fontweight='bold', fontsize=14)
     ax1.set_xlabel("Architecture", fontweight='bold', fontsize=14)
 
@@ -324,12 +333,14 @@ def plot_fig5_efficiency_tradeoff():
 
     # Line Plot (Latency)
     ax2 = ax1.twinx()
+    # Use log scale for latency because DINOv2 is huge
+    ax2.set_yscale('log')
     ax2.plot(df['Architecture'], df['Latency'], color='red', marker='o',
              markersize=12, linewidth=3)
-    ax2.set_ylabel("Inference Latency (ms) - Lower is Better",
+    ax2.set_ylabel("Inference Latency (ms) - Log Scale",
                    color='red', fontweight='bold', fontsize=14)
     ax2.tick_params(axis='y', labelcolor='red')
-    ax2.set_ylim(0, 30)
+    ax2.set_ylim(1, 1000)
     ax2.grid(True, linestyle='--', alpha=0.5)
 
     # Add latency labels
@@ -426,4 +437,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

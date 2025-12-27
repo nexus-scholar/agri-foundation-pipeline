@@ -6,7 +6,7 @@ Supports:
 - Baseline training (source-only)
 - Active learning with multiple strategies (random, entropy, hybrid)
 - Semi-supervised learning with FixMatch
-- Multiple architectures (MobileNetV3, EfficientNet, MobileViT)
+- Multiple architectures (MobileNetV3, EfficientNet, MobileViT, DINOv2-Giant)
 
 Usage:
     # Baseline training
@@ -186,7 +186,7 @@ def parse_args():
 
     # Model
     parser.add_argument('--model', default='mobilenetv3',
-                        choices=['mobilenetv3', 'efficientnet', 'mobilevit'],
+                        choices=['mobilenetv3', 'efficientnet', 'mobilevit', 'dinov2_giant'],
                         help='Model architecture')
     parser.add_argument('--baseline-path', default='data/models/baselines/baseline.pth',
                         help='Path to save/load baseline model')
@@ -503,4 +503,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

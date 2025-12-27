@@ -72,17 +72,23 @@ def get_phase1_experiments() -> List[ExperimentRun]:
     """
     experiments = []
     
-    # Single crop baselines (3 crops × 3 models = 9)
+    # Single crop baselines (3 crops × 4 models = 12)
     crops = ["tomato", "potato", "pepper"]
-    models = ["mobilenetv3", "efficientnet", "mobilevit"]
+    models = ["mobilenetv3", "efficientnet", "mobilevit", "dinov2_giant"]
     
     idx = 0
     for crop in crops:
         for model in models:
             idx += 1
             exp_name = f"P1_{idx:02d}_baseline_{crop}_{model}"
-            # Larger batch size for A100 (128 for light models, 64 for ViT)
-            batch_size = 64 if model == "mobilevit" else 128
+            # Larger batch size for A100 (128 for light models, 64 for ViT, 16 for Giant)
+            if model == "mobilevit":
+                batch_size = 64
+            elif model == "dinov2_giant":
+                batch_size = 16
+            else:
+                batch_size = 128
+                
             experiments.append(ExperimentRun(
                 id=f"P1-{idx:02d}",
                 name=f"Baseline {crop.title()} {model}",
@@ -100,11 +106,11 @@ def get_phase1_experiments() -> List[ExperimentRun]:
                     "--no-confusion",
                 ],
                 description=f"Baseline: {crop} with {model} - measure generalization gap",
-                expected_time_minutes=5 if model == "mobilevit" else 3,  # Much faster with A100
+                expected_time_minutes=5 if model == "mobilevit" else (15 if model == "dinov2_giant" else 3),
                 priority=1,
             ))
     
-    # All crops combined (1 combined × 3 models = 3)
+    # All crops combined (1 combined × 4 models = 4)
     for model in models:
         idx += 1
         exp_name = f"P1_{idx:02d}_baseline_all_{model}"
@@ -124,7 +130,7 @@ def get_phase1_experiments() -> List[ExperimentRun]:
                 "--no-confusion",
             ],
             description=f"Baseline: All crops combined with {model}",
-            expected_time_minutes=20 if model == "mobilevit" else 15,
+            expected_time_minutes=20 if model == "mobilevit" else (40 if model == "dinov2_giant" else 15),
             priority=2,
         ))
     
@@ -293,9 +299,9 @@ def get_phase4_experiments() -> List[ExperimentRun]:
 
 def get_phase5_experiments() -> List[ExperimentRun]:
     """
-    Phase 5: Architecture Benchmark - Efficiency vs Robustness (4 experiments)
+    Phase 5: Architecture Benchmark - Efficiency vs Robustness (6 experiments)
 
-    Scientific Goal: Apply winning method (Hybrid + FixMatch) to EfficientNet and MobileViT.
+    Scientific Goal: Apply winning method (Hybrid + FixMatch) to EfficientNet, MobileViT, and DINOv2.
     Focus on TOMATO as primary testbed (largest target pool for reliable AL).
     Expected: EfficientNet may suffer from Negative Transfer, MobileViT succeeds but slow.
     """
@@ -306,8 +312,10 @@ def get_phase5_experiments() -> List[ExperimentRun]:
     configs = [
         ("efficientnet", "tomato", 0.001, 96),    # EfficientNet can handle larger batches
         ("mobilevit", "tomato", 0.0005, 48),      # ViT needs smaller batches (memory)
+        ("dinov2_giant", "tomato", 0.00005, 16),  # Giant model needs small batch and low LR
         ("efficientnet", "potato", 0.001, 96),   # Secondary validation
         ("mobilevit", "potato", 0.0005, 48),      # Secondary validation
+        ("dinov2_giant", "potato", 0.00005, 16),  # Secondary validation
     ]
 
     for idx, (model, crop, lr, batch_size) in enumerate(configs, 1):
@@ -334,7 +342,7 @@ def get_phase5_experiments() -> List[ExperimentRun]:
                 "--no-confusion",
             ],
             description=f"{'PRIMARY: ' if crop == 'tomato' else ''}SOTA {model} on {crop} + FixMatch",
-            expected_time_minutes=20 if model == "mobilevit" else 15,
+            expected_time_minutes=20 if model == "mobilevit" else (40 if model == "dinov2_giant" else 15),
             priority=1,
         ))
 
@@ -348,7 +356,7 @@ def get_all_experiments() -> List[ExperimentRun]:
         get_phase2_experiments() +   # 3 experiments
         get_phase3_experiments() +   # 4 experiments
         get_phase4_experiments() +   # 3 experiments
-        get_phase5_experiments()     # 4 experiments
+        get_phase5_experiments()     # 6 experiments
     )
 
 
@@ -776,4 +784,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

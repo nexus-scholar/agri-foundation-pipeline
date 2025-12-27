@@ -5,6 +5,7 @@ Supports multiple edge-deployable architectures:
 - MobileNetV3-Small (default, fastest)
 - EfficientNet-B0 (balanced accuracy/speed)
 - MobileViT-XS (transformer-based, highest accuracy)
+- DINOv2-Giant (ViT-g/14) (large foundation model)
 
 All models are compatible with ImageNet pretrained weights and can be
 fine-tuned for plant disease classification.
@@ -28,7 +29,7 @@ except ImportError:
 
 
 # Supported architectures
-SUPPORTED_MODELS = ['mobilenetv3', 'efficientnet', 'mobilevit']
+SUPPORTED_MODELS = ['mobilenetv3', 'efficientnet', 'mobilevit', 'dinov2_giant']
 
 
 def get_model(
@@ -43,7 +44,7 @@ def get_model(
     This is the main entry point for model creation in experiments.
 
     Args:
-        model_name: Architecture name ('mobilenetv3', 'efficientnet', 'mobilevit').
+        model_name: Architecture name ('mobilenetv3', 'efficientnet', 'mobilevit', 'dinov2_giant').
         num_classes: Number of output classes.
         pretrained: Whether to load ImageNet pretrained weights.
         device: Target device (default: auto-detect CUDA/CPU).
@@ -85,6 +86,20 @@ def get_model(
             )
         model = timm.create_model(
             'mobilevit_xs',
+            pretrained=pretrained,
+            num_classes=num_classes,
+        )
+
+    elif model_name == 'dinov2_giant':
+        if not TIMM_AVAILABLE:
+            raise ImportError(
+                "timm is required for DINOv2. "
+                "Install with: pip install timm"
+            )
+        # DINOv2 Giant (ViT-g/14)
+        # Using vit_giant_patch14_dinov2.lvd142m from timm
+        model = timm.create_model(
+            'vit_giant_patch14_dinov2.lvd142m',
             pretrained=pretrained,
             num_classes=num_classes,
         )
@@ -174,7 +189,7 @@ def freeze_backbone(model: nn.Module) -> nn.Module:
     Freeze all layers except the classifier head.
 
     Works with MobileNetV3 (classifier), EfficientNet (classifier),
-    and MobileViT (head).
+    MobileViT (head), and DINOv2 (head).
     """
     classifier_keywords = ['classifier', 'head', 'fc']
 
@@ -240,6 +255,13 @@ def get_model_info(model_name: str) -> dict:
             'input_size': 256,
             'notes': 'Transformer-based, highest accuracy',
         },
+        'dinov2_giant': {
+            'name': 'DINOv2-Giant',
+            'params_millions': 1100,
+            'gflops': 0.0, # Not specified
+            'input_size': 224, # Default for ViT usually
+            'notes': 'Large foundation model (ViT-g/14)',
+        },
     }
 
     model_name = model_name.lower().strip()
@@ -247,4 +269,3 @@ def get_model_info(model_name: str) -> dict:
         raise ValueError(f"Unknown model: {model_name}. Supported: {list(info.keys())}")
 
     return info[model_name]
-

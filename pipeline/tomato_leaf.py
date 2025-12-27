@@ -74,6 +74,20 @@ def process_tomato_leaf(raw_dir: Path, processed_dir: Path) -> list[dict[str, st
         })
         stats["raw_images"] += 1
 
+    # Load rename map
+    rename_map_path = raw_dir.parent / "tomatoleaf_renamed_files.json"
+    short_to_orig = {}
+    orig_to_short = {}
+    if rename_map_path.exists():
+        with open(rename_map_path, "r", encoding="utf-8") as f:
+            renamed_data = json.load(f)
+            for item in renamed_data:
+                # Normalize paths to handle separator differences
+                orig = str(Path(item["original"]))
+                short = item["short_name"]
+                short_to_orig[short] = orig
+                orig_to_short[orig] = short
+
     # Copy annotated YOLO structure if present
     for split in YOLO_SPLITS:
         split_images = annotated_root / split / "images"
@@ -88,11 +102,57 @@ def process_tomato_leaf(raw_dir: Path, processed_dir: Path) -> list[dict[str, st
         for image_path in sorted(split_images.glob("*.jpg")):
             dst_img = split_out_images / image_path.name
             copy_file(image_path, dst_img)
-            label_path = split_labels / (image_path.stem + ".txt")
-            if label_path.exists():
-                copy_file(label_path, split_out_labels / label_path.name)
+            
+            # Resolve label path using rename map
+            label_found = False
+            
+            # 1. Determine original image path (relative to zip root)
+            img_name = image_path.name
+            if img_name in short_to_orig:
+                orig_img_zip_path = short_to_orig[img_name]
             else:
-                (split_out_labels / (image_path.stem + ".txt")).write_text("", encoding="utf-8")
+                try:
+                    # If not renamed, path relative to raw_dir is the zip path
+                    orig_img_zip_path = str(image_path.relative_to(raw_dir))
+                except ValueError:
+                    orig_img_zip_path = ""
+
+            if orig_img_zip_path:
+                # 2. Derive expected original label path
+                # Replace extension with .txt (handle .jpg, .JPG, etc)
+                p = Path(orig_img_zip_path)
+                
+                # Handle images -> labels directory change
+                parts = list(p.parts)
+                # Find 'images' component and replace with 'labels'
+                # Look from the end
+                for i in range(len(parts) - 1, -1, -1):
+                    if parts[i].lower() == "images":
+                        parts[i] = "labels"
+                        break
+                
+                p = Path(*parts)
+                orig_label_zip_path = str(p.with_suffix(".txt"))
+                
+                # 3. Find if label exists on disk (renamed or not)
+                if orig_label_zip_path in orig_to_short:
+                    label_name = orig_to_short[orig_label_zip_path]
+                else:
+                    label_name = Path(orig_label_zip_path).name
+                
+                label_path = split_labels / label_name
+                if label_path.exists():
+                    copy_file(label_path, split_out_labels / label_path.name)
+                    label_found = True
+
+            # Fallback to simple matching if complex logic failed
+            if not label_found:
+                label_path = split_labels / (image_path.stem + ".txt")
+                if label_path.exists():
+                    copy_file(label_path, split_out_labels / label_path.name)
+                else:
+                    (split_out_labels / (image_path.stem + ".txt")).write_text("", encoding="utf-8")
+            
             stats[f"annotated_{split}"] += 1
             records.append({
                 "filename": image_path.name,
