@@ -207,7 +207,9 @@ def train_one_model(model_name, args, dataloaders, dataset_sizes, class_names, d
         model = model.to(device)
     except Exception as e:
         log(f"[red]Error creating model {model_name}: {e}[/red]")
-        return None, None
+        # Wait a brief moment so the user might see the error in the TUI log before it potentially closes
+        time.sleep(2)
+        return None, None, str(e)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.AdamW(model.parameters(), lr=args.lr)
@@ -297,7 +299,7 @@ def train_one_model(model_name, args, dataloaders, dataset_sizes, class_names, d
     log(f"Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s")
     
     model.load_state_dict(best_model_wts)
-    return model, history
+    return model, history, None
 
 def plot_history(history, model_name, output_dir):
     clean_name = model_name.split('.')[0]
@@ -363,20 +365,32 @@ def main():
     console.print("[dim]Loading dataset...[/dim]")
     dataloaders, dataset_sizes, class_names = get_dataloaders(args.data_dir, args.batch_size, args.num_workers, args.image_size, None)
     console.print(f"[green]Ready to train on {len(class_names)} classes![/green]")
-    time.sleep(1)
 
+    errors = []
+    
     with Live(layout, refresh_per_second=4, screen=True):
         # Pass progress group
         progress_group = (overall_progress, epoch_progress, None)
         
         for model_name in args.models:
-            model, history = train_one_model(model_name, args, dataloaders, dataset_sizes, class_names, device, layout, progress_group)
+            model, history, err = train_one_model(model_name, args, dataloaders, dataset_sizes, class_names, device, layout, progress_group)
             
+            if err:
+                errors.append(f"Model {model_name} failed: {err}")
+                continue
+
             if model and history:
                 clean_name = model_name.split('.')[0]
                 csv_path = os.path.join(args.output_dir, f"{clean_name}_history.csv")
                 pd.DataFrame(history).to_csv(csv_path, index=False)
                 plot_history(history, model_name, args.output_dir)
+
+    if errors:
+        console.print("\n[bold red]Training completed with errors:[/bold red]")
+        for e in errors:
+            console.print(f"  - {e}")
+    else:
+        console.print("\n[bold green]Training completed successfully![/bold green]")
 
 if __name__ == "__main__":
     try:
