@@ -79,12 +79,12 @@ If you use this pipeline or dataset in your research, please cite:
 
 ```bibtex
 @misc{agri_foundation_pipeline,
-  author = {Your Name},
+  author = {Mouadh BEKHOUCHE},
   title = {Agri-Foundation Dataset Processing Pipeline},
   year = {2026},
   publisher = {GitHub},
   journal = {GitHub repository},
-  howpublished = {\url{https://github.com/yourusername/dataset-processing}}
+  howpublished = {\url{https://github.com/nexus-scholar/dataset-processing}}
 }
 ```
 
