@@ -1,5 +1,6 @@
 import os
 import argparse
+import sys
 import time
 import copy
 import numpy as np
@@ -22,8 +23,7 @@ from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeRe
 from rich.table import Table
 from rich.text import Text
 from rich import box
-from rich.logging import RichHandler
-import logging
+from rich.prompt import Prompt, IntPrompt, FloatPrompt, Confirm
 
 # Set non-interactive backend for matplotlib
 plt.switch_backend('Agg')
@@ -38,7 +38,50 @@ def seed_everything(seed):
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
 
+def get_args_interactive():
+    console.clear()
+    console.print(Panel.fit("[bold cyan]Agricultural Vision - Training Config Wizard[/bold cyan]", border_style="blue"))
+    
+    # 1. Models
+    default_models = "mobilenetv4_conv_medium.e500_r256_in1k, mobilenetv5_base.e500_r256_in1k"
+    models_str = Prompt.ask("Models to train (comma separated)", default=default_models)
+    models = [m.strip() for m in models_str.split(',')]
+    
+    # 2. Dataset
+    data_dir = Prompt.ask("Dataset directory", default="../data/release")
+    
+    # 3. Hyperparameters
+    epochs = IntPrompt.ask("Number of epochs", default=20)
+    batch_size = IntPrompt.ask("Batch size", default=32)
+    lr = FloatPrompt.ask("Learning rate", default=1e-4)
+    image_size = IntPrompt.ask("Image size", default=256)
+    
+    # 4. Misc
+    output_dir = Prompt.ask("Output directory", default="../models/foundational")
+    seed = IntPrompt.ask("Random seed", default=42)
+    use_cuda = Confirm.ask("Use CUDA if available?", default=True)
+    
+    # Construct namespace
+    args = argparse.Namespace(
+        data_dir=data_dir,
+        output_dir=output_dir,
+        models=models,
+        epochs=epochs,
+        batch_size=batch_size,
+        lr=lr,
+        image_size=image_size,
+        num_workers=4,
+        seed=seed,
+        no_cuda=not use_cuda
+    )
+    return args
+
 def get_args():
+    # Only run argparse if arguments are actually passed via CLI
+    # If no args (or just script name), switch to interactive
+    if len(sys.argv) == 1:
+        return get_args_interactive()
+
     parser = argparse.ArgumentParser(description="Train MobileNet Foundational Models")
     parser.add_argument('--data_dir', type=str, default='../data/release', help='Path to dataset')
     parser.add_argument('--output_dir', type=str, default='../models/foundational', help='Directory to save models')
@@ -52,7 +95,14 @@ def get_args():
     parser.add_argument('--num_workers', type=int, default=4, help='Number of dataloader workers')
     parser.add_argument('--seed', type=int, default=42, help='Random seed')
     parser.add_argument('--no_cuda', action='store_true', help='Disable CUDA')
-    return parser.parse_args()
+    parser.add_argument('--interactive', action='store_true', help='Force interactive mode')
+    
+    args = parser.parse_args()
+    
+    if args.interactive:
+        return get_args_interactive()
+        
+    return args
 
 def get_transforms(image_size):
     return {
@@ -78,13 +128,11 @@ def get_dataloaders(data_dir, batch_size, num_workers, image_size, console_log):
     dataloaders = {}
     dataset_sizes = {}
     class_names = []
-
-    console_log(f"Loading data from: [cyan]{data_dir}[/cyan]")
     
     for x in ['train', 'val']:
         path = os.path.join(data_dir, x)
         if not os.path.exists(path):
-            console_log(f"[yellow]WARN[/yellow] {x} directory not found at {path}. Attempting fallback split...")
+            if console_log: console_log(f"[yellow]WARN[/yellow] {x} directory not found at {path}. Attempting fallback split...")
             try:
                 full_dataset = ImageFolder(data_dir, transform=data_transforms['train'])
                 train_size = int(0.8 * len(full_dataset))
@@ -92,13 +140,14 @@ def get_dataloaders(data_dir, batch_size, num_workers, image_size, console_log):
                 train_dataset, val_dataset = torch.utils.data.random_split(full_dataset, [train_size, val_size])
                 
                 # Hack for transforms
-                console_log("[dim]Using random split. Validation set will use training transforms.[/dim]")
+                if console_log: console_log("[dim]Using random split. Validation set will use training transforms.[/dim]")
                 
                 image_datasets = {'train': train_dataset, 'val': val_dataset}
                 class_names = full_dataset.classes
                 break
             except Exception as e:
-                console_log(f"[bold red]ERROR[/bold red] Failed to load dataset: {e}")
+                if console_log: console_log(f"[bold red]ERROR[/bold red] Failed to load dataset: {e}")
+                else: print(f"Error: {e}")
                 exit(1)
         else:
             image_datasets[x] = ImageFolder(path, data_transforms[x])
@@ -111,9 +160,6 @@ def get_dataloaders(data_dir, batch_size, num_workers, image_size, console_log):
                                      num_workers=num_workers)
         dataset_sizes[x] = len(image_datasets[x])
 
-    console_log(f"Data loaded: [green]{dataset_sizes['train']} train[/green], [blue]{dataset_sizes.get('val', 0)} val[/blue] images.")
-    console_log(f"Classes ({len(class_names)}): {', '.join(class_names[:3])}...")
-    
     return dataloaders, dataset_sizes, class_names
 
 def make_layout():
@@ -211,9 +257,6 @@ def train_one_model(model_name, args, dataloaders, dataset_sizes, class_names, d
                 running_corrects += torch.sum(preds == labels.data)
                 
                 epoch_progress.advance(epoch_task)
-                
-                # Update metrics live (approximate)
-                batch_acc = torch.sum(preds == labels.data).double() / inputs.size(0)
                 
             epoch_progress.remove_task(epoch_task)
 
@@ -316,9 +359,13 @@ def main():
     )
     layout["progress"].update(Panel(p_layout, title="Progress", border_style="green"))
 
+    # Initial loading (outside Live layout to avoid flickering if prints happen)
+    console.print("[dim]Loading dataset...[/dim]")
+    dataloaders, dataset_sizes, class_names = get_dataloaders(args.data_dir, args.batch_size, args.num_workers, args.image_size, None)
+    console.print(f"[green]Ready to train on {len(class_names)} classes![/green]")
+    time.sleep(1)
+
     with Live(layout, refresh_per_second=4, screen=True):
-        dataloaders, dataset_sizes, class_names = get_dataloaders(args.data_dir, args.batch_size, args.num_workers, args.image_size, lambda x: None)
-        
         # Pass progress group
         progress_group = (overall_progress, epoch_progress, None)
         
