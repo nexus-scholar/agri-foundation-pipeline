@@ -9,8 +9,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from torchvision.datasets import ImageFolder
+from sklearn.model_selection import train_test_split
 import timm
 import matplotlib.pyplot as plt
 
@@ -23,7 +24,7 @@ from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeRe
 from rich.table import Table
 from rich.text import Text
 from rich import box
-from rich.prompt import Prompt, IntPrompt, FloatPrompt, Confirm
+import questionary
 
 # Set non-interactive backend for matplotlib
 plt.switch_backend('Agg')
@@ -42,24 +43,52 @@ def get_args_interactive():
     console.clear()
     console.print(Panel.fit("[bold cyan]Agricultural Vision - Training Config Wizard[/bold cyan]", border_style="blue"))
     
-    # 1. Models
-    default_models = "mobilenetv4_conv_medium.e500_r256_in1k, mobilenetv5_base.e500_r256_in1k"
-    models_str = Prompt.ask("Models to train (comma separated)", default=default_models)
-    models = [m.strip() for m in models_str.split(',')]
+    # 1. Dataset
+    data_dir = questionary.path("Dataset directory:", default="../data/release").ask()
     
-    # 2. Dataset
-    data_dir = Prompt.ask("Dataset directory", default="../data/release")
+    # 2. Data Split Strategy
+    split_strategy = questionary.select(
+        "Data Split Strategy:",
+        choices=[
+            "Use existing 'train'/'val' folders",
+            "Random Split (80% Train, 20% Val)",
+            "Random Split (70% Train, 30% Val)",
+            "Random Split (90% Train, 10% Val)"
+        ],
+        default="Use existing 'train'/'val' folders"
+    ).ask()
+
+    # 3. Models
+    # Curated list of efficient models for Edge/Mobile
+    model_choices = [
+        questionary.Choice("mobilenetv5_300m.gemma3n", checked=True),
+        questionary.Choice("mobilenetv4_conv_medium.e500_r256_in1k", checked=True),
+        questionary.Choice("mobilenetv4_conv_small.e2400_r224_in1k"),
+        questionary.Choice("mobilenetv4_conv_large.e600_r384_in1k"),
+        questionary.Choice("mobilenetv3_large_100.ra_in1k"),
+        questionary.Choice("resnet18.a1_in1k"),
+        questionary.Choice("efficientnet_b0.ra_in1k")
+    ]
     
-    # 3. Hyperparameters
-    epochs = IntPrompt.ask("Number of epochs", default=20)
-    batch_size = IntPrompt.ask("Batch size", default=32)
-    lr = FloatPrompt.ask("Learning rate", default=1e-4)
-    image_size = IntPrompt.ask("Image size", default=256)
+    models = questionary.checkbox(
+        "Select models to train (Space to select, Enter to confirm):",
+        choices=model_choices
+    ).ask()
     
-    # 4. Misc
-    output_dir = Prompt.ask("Output directory", default="../models/foundational")
-    seed = IntPrompt.ask("Random seed", default=42)
-    use_cuda = Confirm.ask("Use CUDA if available?", default=True)
+    if not models:
+        console.print("[red]No models selected! Exiting.[/red]")
+        sys.exit(1)
+
+    # 4. Hyperparameters
+    epochs = int(questionary.text("Number of epochs:", default="20").ask())
+    batch_size = int(questionary.text("Batch size:", default="32").ask())
+    lr = float(questionary.text("Learning rate:", default="0.0001").ask())
+    image_size = int(questionary.text("Image size:", default="256").ask())
+    
+    # 5. Misc
+    output_dir = questionary.path("Output directory:", default="../models/foundational").ask()
+    seed = int(questionary.text("Random seed:", default="42").ask())
+    use_cuda = questionary.confirm("Use CUDA if available?", default=True).ask()
     
     # Construct namespace
     args = argparse.Namespace(
@@ -72,13 +101,12 @@ def get_args_interactive():
         image_size=image_size,
         num_workers=4,
         seed=seed,
-        no_cuda=not use_cuda
+        no_cuda=not use_cuda,
+        split_strategy=split_strategy
     )
     return args
 
 def get_args():
-    # Only run argparse if arguments are actually passed via CLI
-    # If no args (or just script name), switch to interactive
     if len(sys.argv) == 1:
         return get_args_interactive()
 
@@ -86,7 +114,7 @@ def get_args():
     parser.add_argument('--data_dir', type=str, default='../data/release', help='Path to dataset')
     parser.add_argument('--output_dir', type=str, default='../models/foundational', help='Directory to save models')
     parser.add_argument('--models', type=str, nargs='+', 
-                        default=['mobilenetv4_conv_medium.e500_r256_in1k', 'mobilenetv5_base.e500_r256_in1k'],
+                        default=['mobilenetv4_conv_medium.e500_r256_in1k'],
                         help='List of timm model names to train')
     parser.add_argument('--epochs', type=int, default=20, help='Number of epochs')
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
@@ -97,6 +125,9 @@ def get_args():
     parser.add_argument('--no_cuda', action='store_true', help='Disable CUDA')
     parser.add_argument('--interactive', action='store_true', help='Force interactive mode')
     
+    # CLI fallback for split strategy isn't fully implemented to keep CLI simple, defaults to existing folders
+    parser.add_argument('--split_strategy', type=str, default="Use existing 'train'/'val' folders")
+
     args = parser.parse_args()
     
     if args.interactive:
@@ -122,37 +153,65 @@ def get_transforms(image_size):
         ]),
     }
 
-def get_dataloaders(data_dir, batch_size, num_workers, image_size, console_log):
-    data_transforms = get_transforms(image_size)
-    image_datasets = {}
+def get_dataloaders(args, console_log):
+    data_dir = args.data_dir
+    split_strategy = args.split_strategy
+    batch_size = args.batch_size
+    num_workers = args.num_workers
+    
+    data_transforms = get_transforms(args.image_size)
     dataloaders = {}
     dataset_sizes = {}
     class_names = []
+
+    if console_log: console_log(f"Loading data from: [cyan]{data_dir}[/cyan]")
     
-    for x in ['train', 'val']:
-        path = os.path.join(data_dir, x)
-        if not os.path.exists(path):
-            if console_log: console_log(f"[yellow]WARN[/yellow] {x} directory not found at {path}. Attempting fallback split...")
-            try:
-                full_dataset = ImageFolder(data_dir, transform=data_transforms['train'])
-                train_size = int(0.8 * len(full_dataset))
-                val_size = len(full_dataset) - train_size
-                train_dataset, val_dataset = torch.utils.data.random_split(full_dataset, [train_size, val_size])
-                
-                # Hack for transforms
-                if console_log: console_log("[dim]Using random split. Validation set will use training transforms.[/dim]")
-                
-                image_datasets = {'train': train_dataset, 'val': val_dataset}
-                class_names = full_dataset.classes
-                break
-            except Exception as e:
-                if console_log: console_log(f"[bold red]ERROR[/bold red] Failed to load dataset: {e}")
-                else: print(f"Error: {e}")
-                exit(1)
+    # Check if explicit train/val folders exist
+    has_split_folders = os.path.exists(os.path.join(data_dir, 'train')) and os.path.exists(os.path.join(data_dir, 'val'))
+    
+    if split_strategy == "Use existing 'train'/'val' folders":
+        if has_split_folders:
+            image_datasets = {x: ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
+            class_names = image_datasets['train'].classes
         else:
-            image_datasets[x] = ImageFolder(path, data_transforms[x])
-            if x == 'train':
-                class_names = image_datasets[x].classes
+             # Fallback if strategy requested but folders missing
+             if console_log: console_log("[yellow]WARN[/yellow] 'train'/'val' folders not found. Falling back to 80/20 Random Split.")
+             full_dataset = ImageFolder(data_dir, transform=data_transforms['train'])
+             class_names = full_dataset.classes
+             train_idx, val_idx = train_test_split(list(range(len(full_dataset))), test_size=0.2, stratify=full_dataset.targets)
+             
+             train_dataset = Subset(full_dataset, train_idx)
+             val_dataset = Subset(full_dataset, val_idx)
+             # Note: Subset uses original dataset's transform. For val, we might ideally want val transforms.
+             # This is a limitation of simple Subset. In production, wrap dataset or use separate instances.
+             image_datasets = {'train': train_dataset, 'val': val_dataset}
+    else:
+        # Parse split ratio from string
+        val_ratio = 0.2
+        if "70%" in split_strategy: val_ratio = 0.3
+        elif "90%" in split_strategy: val_ratio = 0.1
+        
+        if console_log: console_log(f"Performing {int((1-val_ratio)*100)}/{int(val_ratio*100)} Random Split...")
+        
+        # Load full dataset - we assume flat structure or we ignore existing split folders to re-split
+        # If structure is train/val but we want random split, we merge them technically, but ImageFolder(root) 
+        # normally expects class folders directly under root.
+        # If data_dir has 'train'/'val' subdirs, ImageFolder(data_dir) will see 'train' and 'val' as classes!
+        # So we must be careful.
+        
+        try:
+            full_dataset = ImageFolder(target_root, transform=data_transforms['train'])
+            class_names = full_dataset.classes
+            # Stratified split is better
+            train_idx, val_idx = train_test_split(list(range(len(full_dataset))), test_size=val_ratio, stratify=full_dataset.targets)
+            
+            image_datasets = {
+                'train': Subset(full_dataset, train_idx),
+                'val': Subset(full_dataset, val_idx)
+            }
+        except Exception as e:
+            if console_log: console_log(f"[red]Error loading dataset for splitting: {e}[/red]")
+            sys.exit(1)
 
     for x in ['train', 'val']:
         dataloaders[x] = DataLoader(image_datasets[x], batch_size=batch_size,
@@ -160,6 +219,10 @@ def get_dataloaders(data_dir, batch_size, num_workers, image_size, console_log):
                                      num_workers=num_workers)
         dataset_sizes[x] = len(image_datasets[x])
 
+    if console_log: 
+        console_log(f"Data loaded: [green]{dataset_sizes['train']} train[/green], [blue]{dataset_sizes['val']} val[/blue] images.")
+        console_log(f"Classes ({len(class_names)}): {', '.join(class_names[:3])}...")
+    
     return dataloaders, dataset_sizes, class_names
 
 def make_layout():
@@ -207,7 +270,6 @@ def train_one_model(model_name, args, dataloaders, dataset_sizes, class_names, d
         model = model.to(device)
     except Exception as e:
         log(f"[red]Error creating model {model_name}: {e}[/red]")
-        # Wait a brief moment so the user might see the error in the TUI log before it potentially closes
         time.sleep(2)
         return None, None, str(e)
 
@@ -220,7 +282,6 @@ def train_one_model(model_name, args, dataloaders, dataset_sizes, class_names, d
     best_acc = 0.0
     history = {'train_loss': [], 'train_acc': [], 'val_loss': [], 'val_acc': []}
 
-    # Add task for this model
     model_task = overall_progress.add_task(f"[bold]{model_name}", total=args.epochs)
     
     for epoch in range(args.epochs):
@@ -237,7 +298,6 @@ def train_one_model(model_name, args, dataloaders, dataset_sizes, class_names, d
             running_loss = 0.0
             running_corrects = 0
             
-            # Epoch progress
             epoch_task = epoch_progress.add_task(f"{phase.upper()}", total=len(dataloaders[phase]))
 
             for inputs, labels in dataloaders[phase]:
@@ -285,7 +345,6 @@ def train_one_model(model_name, args, dataloaders, dataset_sizes, class_names, d
                 else:
                     log(f"Epoch {epoch+1} Val Acc: {epoch_acc:.4f}")
         
-        # Update metrics table
         layout["metrics"].update(create_metrics_table(
             epoch + 1, 
             current_metrics['train_loss'], current_metrics['train_acc'],
@@ -328,7 +387,6 @@ def main():
     seed_everything(args.seed)
     os.makedirs(args.output_dir, exist_ok=True)
     
-    # Layout Setup
     layout = make_layout()
     layout["header"].update(Panel("Dataset Processing & Training Pipeline", style="bold white on blue"))
     layout["footer"].update(Panel("Initializing...", title="Logs"))
@@ -336,7 +394,6 @@ def main():
     use_cuda = not args.no_cuda and torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
     
-    # Progress Bars
     overall_progress = Progress(
         TextColumn("[progress.description]{task.description}"),
         BarColumn(),
@@ -349,11 +406,6 @@ def main():
         TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
     )
     
-    progress_panel = Panel(
-        Layout(name="progress_layout"), 
-        title="Progress", border_style="green"
-    )
-    # We construct a layout inside the panel to hold the two progress bars vertically
     p_layout = Layout()
     p_layout.split_column(
         Layout(overall_progress),
@@ -361,15 +413,13 @@ def main():
     )
     layout["progress"].update(Panel(p_layout, title="Progress", border_style="green"))
 
-    # Initial loading (outside Live layout to avoid flickering if prints happen)
     console.print("[dim]Loading dataset...[/dim]")
-    dataloaders, dataset_sizes, class_names = get_dataloaders(args.data_dir, args.batch_size, args.num_workers, args.image_size, None)
+    dataloaders, dataset_sizes, class_names = get_dataloaders(args, None)
     console.print(f"[green]Ready to train on {len(class_names)} classes![/green]")
 
     errors = []
     
     with Live(layout, refresh_per_second=4, screen=True):
-        # Pass progress group
         progress_group = (overall_progress, epoch_progress, None)
         
         for model_name in args.models:
