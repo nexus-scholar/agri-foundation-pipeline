@@ -208,8 +208,14 @@ def get_dataloaders(args, console_log):
         try:
             full_dataset = ImageFolder(data_dir, transform=data_transforms['train'])
             class_names = full_dataset.classes
-            # Stratified split is better
-            train_idx, val_idx = train_test_split(list(range(len(full_dataset))), test_size=val_ratio, stratify=full_dataset.targets)
+            
+            try:
+                # Stratified split is better
+                train_idx, val_idx = train_test_split(list(range(len(full_dataset))), test_size=val_ratio, stratify=full_dataset.targets)
+            except ValueError as ve:
+                # Fallback if some classes have too few samples for stratification
+                if console_log: console_log(f"[yellow]WARN[/yellow] Stratified split failed (likely some classes have <2 samples). Falling back to random split. Details: {ve}")
+                train_idx, val_idx = train_test_split(list(range(len(full_dataset))), test_size=val_ratio, stratify=None)
             
             image_datasets = {
                 'train': Subset(full_dataset, train_idx),
