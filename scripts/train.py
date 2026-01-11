@@ -166,6 +166,12 @@ def get_dataloaders(args, console_log):
 
     if console_log: console_log(f"Loading data from: [cyan]{data_dir}[/cyan]")
     
+    if not os.path.exists(data_dir):
+        msg = f"[bold red]Error:[/bold red] Dataset directory not found: {data_dir}"
+        if console_log: console_log(msg)
+        else: console.print(msg)
+        sys.exit(1)
+    
     # Check if explicit train/val folders exist
     has_split_folders = os.path.exists(os.path.join(data_dir, 'train')) and os.path.exists(os.path.join(data_dir, 'val'))
     
@@ -210,7 +216,9 @@ def get_dataloaders(args, console_log):
                 'val': Subset(full_dataset, val_idx)
             }
         except Exception as e:
-            if console_log: console_log(f"[red]Error loading dataset for splitting: {e}[/red]")
+            msg = f"[bold red]Error loading dataset for splitting:[/bold red] {e}"
+            if console_log: console_log(msg)
+            else: console.print(msg)
             sys.exit(1)
 
     for x in ['train', 'val']:
