@@ -27,9 +27,12 @@ import shutil
 import subprocess
 import sys
 import urllib.request
-import zipfile
 from pathlib import Path
 
+# Add project root to path
+sys.path.append(os.getcwd())
+
+from pipeline.fs_utils import ensure_dir
 
 # Direct download URLs (mirrors/alternatives)
 PLANTDOC_GITHUB_URL = "https://github.com/pratikkayal/PlantDoc-Dataset/archive/refs/heads/master.zip"
@@ -44,7 +47,7 @@ def download_file(url: str, dest: Path, desc: str = "Downloading"):
     print(f"{desc}: {url}")
     print(f"  -> {dest}")
 
-    dest.parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(dest.parent)
 
     try:
         # Try with urllib (works without extra dependencies)
@@ -115,7 +118,7 @@ def download_plantvillage_kaggle(output_dir: Path) -> bool:
         return False
 
     # Download from Kaggle
-    output_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(output_dir)
 
     print(f"Downloading from Kaggle: {PLANTVILLAGE_KAGGLE}")
     try:
@@ -176,7 +179,7 @@ def download_plantvillage_gdown(output_dir: Path) -> bool:
         print("gdown not installed. Install with: pip install gdown")
         return False
 
-    output_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(output_dir)
     dest = output_dir / "PlantVillage.zip"
 
     for file_id in GDRIVE_IDS:

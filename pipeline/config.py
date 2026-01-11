@@ -123,9 +123,14 @@ def load_default_config(project_root: Path | None = None, datasets: tuple[str, .
     """Create a default configuration for the repository."""
     if project_root is None:
         project_root = Path(__file__).resolve().parent.parent
-    selected = datasets or ("plantvillage", "plantdoc", "tomatoleaf")
     paths = Paths(project_root=project_root)
     sources = load_dataset_definitions(paths)
+    
+    if datasets is None:
+        selected = tuple(sources.keys())
+    else:
+        selected = datasets
+
     if dataset_url_overrides:
         for name, url in dataset_url_overrides.items():
             if name in sources:
@@ -147,8 +152,8 @@ def load_default_config(project_root: Path | None = None, datasets: tuple[str, .
 
 def parse_args() -> PipelineConfig:
     parser = argparse.ArgumentParser(description="Process agricultural datasets")
-    parser.add_argument("--datasets", nargs="*", default=["plantvillage", "plantdoc", "tomatoleaf"],
-                        help="Datasets to process: plantvillage, plantdoc, tomatoleaf")
+    parser.add_argument("--datasets", nargs="*", default=None,
+                        help="Datasets to process (default: all available in datasets.json)")
     parser.add_argument("--log-level", default="INFO")
     parser.add_argument("--download", action="store_true",
                         help="Download missing archives for the selected datasets before processing")
@@ -166,7 +171,10 @@ def parse_args() -> PipelineConfig:
         dataset_url_overrides[name.strip().lower()] = url.strip()
 
     download_flag = args.download or args.download_only
-    cfg = load_default_config(datasets=tuple(args.datasets),
+    
+    selected_datasets = tuple(args.datasets) if args.datasets is not None else None
+    
+    cfg = load_default_config(datasets=selected_datasets,
                               download=download_flag,
                               download_only=args.download_only,
                               dataset_url_overrides=dataset_url_overrides,

@@ -22,6 +22,45 @@
     "processed_dir": "TomatoLeaf_processed",
     "processor": "pipeline.tomato_leaf:process_tomato_leaf",
     "url": "https://data.mendeley.com/public-files/datasets/bpfd9cns5g/2/download"
+  },
+  {
+    "name": "cassava",
+    "zip_name": "cassava-leaf-disease-classification.zip",
+    "raw_dir": "Cassava",
+    "processed_dir": "Cassava_processed",
+    "processor": "pipeline.cassava:process_cassava",
+    "url": ""
+  },
+  {
+    "name": "wheat",
+    "zip_name": "Disease Dataset of Wheat Original, Augmented, and Balanced for Deep Learning.zip",
+    "raw_dir": "Wheat",
+    "processed_dir": "Wheat_processed",
+    "processor": "pipeline.wheat:process_wheat",
+    "url": ""
+  },
+  {
+    "name": "new_plant_diseases",
+    "zip_name": "New Plant Diseases.zip",
+    "raw_dir": "NewPlantDiseases",
+    "processed_dir": "NewPlantDiseases_processed",
+    "processor": "pipeline.new_plant_diseases:process_new_plant_diseases",
+    "url": ""
+  },
+  {
+    "name": "plantseg",
+    "zip_name": "plantseg.zip",
+    "raw_dir": "PlantSeg",
+    "processed_dir": "PlantSeg_processed",
+    "processor": "pipeline.plantseg:process_plantseg",
+    "url": ""
+  },
+  {
+    "name": "plantwild",
+    "zip_name": "plantwild.zip",
+    "raw_dir": "PlantWild",
+    "processed_dir": "PlantWild_processed",
+    "processor": "pipeline.plantwild:process_plantwild",
+    "url": ""
   }
 ]
-

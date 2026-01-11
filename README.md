@@ -1,150 +1,93 @@
-# Partial Domain Adaptation for Agricultural Edge AI
+# Agri-Foundation Dataset Pipeline
 
-<p align="center">
-  <img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="Python 3.10+">
-  <img src="https://img.shields.io/badge/PyTorch-2.1%2B-red.svg" alt="PyTorch 2.1+">
-  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
-</p>
+**A robust, reproducible pipeline for aggregating, normalizing, and cleaning large-scale agricultural image datasets.**
 
-> **Bridging the Lab-to-Field Generalization Gap with Active Learning and Semi-Supervised Learning**
+This repository contains the data engineering infrastructure used to create the **Agri-Foundation-145k** dataset—a unified benchmark for plant disease detection comprising 144,751 images across 215 distinct classes, aggregated from 8 open-access sources.
 
-## Overview
+## 🌟 Key Features
 
-This repository implements a **Partial Domain Adaptation (PDA)** framework for plant disease detection, combining:
-- **Active Learning** with Hybrid sampling (70% Entropy / 30% Random)
-- **FixMatch** semi-supervised learning for handling missing classes
-- Support for **MobileNetV3**, **EfficientNet**, and **MobileViT** architectures
+*   **Multi-Source Aggregation:** Standardizes data from PlantVillage, PlantDoc, New Plant Diseases, Tomato Leaf, Cassava, Wheat, PlantSeg, and PlantWild.
+*   **Taxonomic Alignment:** "Fuzzy Alignment" algorithm maps disparate folder names (e.g., `Tomato_Early_Blight` vs. `Tomato___Early_blight`) to canonical biological entities.
+*   **Quality Control:** Automated MD5 deduplication, file corruption checks, and class imbalance analysis.
+*   **Research Grade:** Fully reproducible workflow with detailed logging and artifacts.
 
-## Key Features
+## 📂 Repository Structure
 
-- 🔬 **Semantic Label Mapping** - Handles class mismatches between PlantVillage (lab) and PlantDoc (field)
-- 🎯 **PDA-aware Training** - Handles "phantom classes" present in source but missing in target
-- 📊 **Forensic Experiment Logging** - Full reproducibility with config, splits, and metrics recording
-- ⚡ **Edge-optimized** - Designed for deployment on resource-constrained devices
+```text
+.
+├── data/
+│   ├── raw/                 # Downloaded zip files
+│   ├── processed/           # Extracted and standardized datasets
+│   └── release/             # Final, publication-ready dataset
+├── pipeline/                # Core processing logic
+│   ├── data_utils.py        # Hashing & CSV utilities
+│   ├── fs_utils.py          # Long-path safe file operations
+│   └── [dataset].py         # Per-dataset normalization rules
+├── scripts/                 # Execution scripts
+│   ├── process_datasets.py        # Master ingestion script
+│   ├── verify_and_clean.py        # QC & Deduplication
+│   └── package_for_release.py     # Final artifact generation
+├── notebooks/               # Analysis & Visualization
+└── docs/                    # Detailed documentation
+```
 
-## Installation
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Python 3.8+
+- Recommended: SSD storage (I/O intensive)
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/dataset-processing.git
+# Clone the repository
+git clone https://github.com/yourusername/dataset-processing.git
 cd dataset-processing
-python -m venv .venv
-.\.venv\Scripts\activate  # Windows
-# source .venv/bin/activate  # Linux/Mac
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-## Quick Start
+### Usage
 
-### 1. Prepare Data
-
-Place datasets in `data/raw/dataset/`:
-- `plantvillage.zip`
-- `plantdoc.zip`
-
+**1. Ingest & Normalize**
+Download sources and standardize them into a unified structure.
 ```bash
-python process_datasets.py --datasets plantvillage plantdoc
+python process_datasets.py
 ```
 
-### 2. Run Experiments
-
+**2. Verify & Clean**
+Run integrity checks and remove duplicates.
 ```bash
-# List all 26 experiments
-python colab_experiment_runner.py --list
-
-# Run Phase 1 (Baselines)
-python colab_experiment_runner.py --phase 1
-
-# Run all experiments (~9 hours on GPU)
-python colab_experiment_runner.py --all
+python scripts/verify_and_clean_dataset.py
 ```
 
-### 3. Single Experiment
-
+**3. Package**
+Generate the final release folder.
 ```bash
-# Baseline training
-python run_experiment.py --mode baseline --model mobilenetv3 --crop tomato
-
-# Active Learning with FixMatch
-python run_experiment.py --mode active --model mobilenetv3 --crop potato \
-    --strategy hybrid --use-fixmatch --budget 10 --rounds 5
+python scripts/package_for_release.py
 ```
 
-## Project Structure
+## 📊 Documentation
 
-```
-├── src/                    # Core ML modules
-│   ├── config/             # Configuration and crop mappings
-│   ├── data/               # Data loading and transforms
-│   ├── models/             # Model factory (MobileNet, EfficientNet, ViT)
-│   ├── strategies/         # Active learning and FixMatch
-│   └── utils/              # Metrics, recording, console utilities
-├── experiments/            # Individual experiment scripts
-├── pipeline/               # Dataset processing modules
-├── data/
-│   ├── raw/                # Place zip files here
-│   ├── processed/          # Generated outputs
-│   └── models/baselines/   # Trained model checkpoints
-├── results/
-│   └── experiments/        # Experiment logs and metrics
-├── docs/                   # Documentation
-│   ├── EXPERIMENTS.md      # Full experiment protocol
-│   ├── datasets.md         # Dataset information
-│   └── pipeline_overview.md
-├── run_experiment.py       # CLI entry point
-└── colab_experiment_runner.py  # Batch experiment runner
-```
+*   [**Dataset Preparation Guide**](docs/DATASET_PREPARATION.md): Step-by-step reproduction instructions.
+*   [**Dataset Details**](docs/DATASETS.md): Specifics on the 8 source datasets.
+*   [**Pipeline Architecture**](docs/PIPELINE_OVERVIEW.md): Technical design and data flow.
 
-## Experiment Protocol
+## 📝 Citation
 
-| Phase | Name | Experiments | Purpose |
-|-------|------|-------------|---------|
-| **P1** | Baselines | 12 | Measure generalization gap |
-| **P2** | Strong Aug | 3 | Prove augmentation isn't enough |
-| **P3** | AL Ablation | 4 | Justify Hybrid strategy |
-| **P4** | FixMatch | 3 | Core SSL contribution |
-| **P5** | Architecture | 4 | Benchmark models |
-
-See [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md) for the complete protocol.
-
-## Supported Crops
-
-| Crop | Classes | PDA Scenario |
-|------|---------|--------------|
-| Tomato | 7 | No (standard DA) |
-| Potato | 3 | **Yes** (healthy missing in field) |
-| Pepper | 2 | No (full alignment) |
-
-## CLI Reference
-
-```bash
-python run_experiment.py --help
-
-Options:
-  --mode {baseline,active}              Experiment mode
-  --model {mobilenetv3,efficientnet,mobilevit}
-  --crop CROP                           Crop filter
-  --strategy {random,entropy,hybrid}    AL strategy
-  --use-fixmatch                        Enable FixMatch SSL
-  --strong-aug                          Use AutoAugment
-  --budget N                            Samples per AL round
-  --rounds N                            Number of AL rounds
-  --exp-name NAME                       Experiment identifier
-```
-
-## Citation
+If you use this pipeline or dataset in your research, please cite:
 
 ```bibtex
-@article{author2025pda,
-  title={Partial Domain Adaptation for Agricultural Edge AI: 
-         Bridging the Lab-to-Field Gap with Active Learning},
-  author={[Author Names]},
-  journal={[Journal]},
-  year={2025}
+@misc{agri_foundation_pipeline,
+  author = {Your Name},
+  title = {Agri-Foundation Dataset Processing Pipeline},
+  year = {2026},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/yourusername/dataset-processing}}
 }
 ```
 
-## License
+## 📄 License
 
-Code: MIT License  
-Datasets: Refer to original authors ([PlantVillage](https://github.com/spMohanty/PlantVillage-Dataset), [PlantDoc](https://github.com/pratikkayal/PlantDoc-Dataset))
-
+This code is released under the **MIT License**. The datasets processed by this pipeline retain the licenses of their original authors.

@@ -30,124 +30,82 @@ def _import_processor(processor_path: str):
     return getattr(module, func_name)
 
 
-def create_combined_csv(pv_data, pd_data, tl_data, output_path):
+def create_combined_csv(processed_data: dict[str, list], output_path):
     """Create combined CSV with all data."""
     print("\n" + "=" * 60)
     print("CREATING COMBINED DATASET CSV")
     print("=" * 60)
 
     combined = []
-
-    for row in pv_data:
-        combined.append({
-            'filename': row['filename'],
-            'label': row['label'],
-            'crop': row['crop'],
-            'disease': row['disease'],
-            'source': 'plantvillage',
-            'path': row['path']
-        })
-
-    for row in pd_data:
-        combined.append({
-            'filename': row['filename'],
-            'label': row['label'],
-            'crop': row['crop'],
-            'disease': row['disease'],
-            'source': 'plantdoc',
-            'path': row['path']
-        })
-
-    for row in tl_data:
-        combined.append({
-            'filename': row['filename'],
-            'label': row['label'],
-            'crop': row['crop'],
-            'disease': row['disease'],
-            'source': 'tomatoleaf',
-            'path': row['path']
-        })
+    
+    for source_name, data in processed_data.items():
+        print(f"Adding {source_name}: {len(data)} images")
+        for row in data:
+            combined.append({
+                'filename': row['filename'],
+                'label': row['label'],
+                'crop': row['crop'],
+                'disease': row['disease'],
+                'source': source_name,
+                'path': row['path']
+            })
 
     with open(output_path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=['filename', 'label', 'crop', 'disease', 'source', 'path'])
         writer.writeheader()
         writer.writerows(combined)
 
-    pv_count = sum(1 for r in combined if r['source'] == 'plantvillage')
-    pd_count = sum(1 for r in combined if r['source'] == 'plantdoc')
-    tl_count = sum(1 for r in combined if r['source'] == 'tomatoleaf')
-
-    print(f"\nPlantVillage: {pv_count} images")
-    print(f"PlantDoc:     {pd_count} images")
-    print(f"TomatoLeaf:   {tl_count} images")
     print(f"TOTAL:        {len(combined)} images")
     print(f"\nSaved: {output_path}")
 
     return combined
 
 
-def print_summary(pv_data, pd_data, tl_data):
+def print_summary(processed_data: dict[str, list]):
     """Print final summary with class overlap analysis."""
     print("\n" + "=" * 60)
     print("FINAL SUMMARY")
     print("=" * 60)
 
-    pv_labels = set(r['label'] for r in pv_data)
-    pd_labels = set(r['label'] for r in pd_data)
-    tl_labels = set(r['label'] for r in tl_data)
+    all_labels = set()
+    dataset_labels = {}
 
-    pv_tomato = set(l for l in pv_labels if l.startswith('tomato'))
-    pd_tomato = set(l for l in pd_labels if l.startswith('tomato'))
-    tl_tomato = set(l for l in tl_labels if l.startswith('tomato'))
-    tomato_overlap = pv_tomato & pd_tomato & tl_tomato if tl_data else pv_tomato & pd_tomato
+    for source_name, data in processed_data.items():
+        labels = set(r['label'] for r in data)
+        dataset_labels[source_name] = labels
+        all_labels.update(labels)
+        
+        tomato_classes = set(l for l in labels if l.startswith('tomato') or l.startswith('Tomato'))
+        
+        print(f"\n{source_name}:")
+        print(f"  Total images: {len(data)}")
+        print(f"  Total classes: {len(labels)}")
+        print(f"  Tomato classes: {len(tomato_classes)}")
 
-    print(f"\nPlantVillage:")
-    print(f"  Total images: {len(pv_data)}")
-    print(f"  Total classes: {len(pv_labels)}")
-    print(f"  Tomato classes: {len(pv_tomato)}")
-
-    print(f"\nPlantDoc:")
-    print(f"  Total images: {len(pd_data)}")
-    print(f"  Total classes: {len(pd_labels)}")
-    print(f"  Tomato classes: {len(pd_tomato)}")
-
-    if tl_data:
-        print(f"\nTomatoLeaf:")
-        print(f"  Total images: {len(tl_data)}")
-        print(f"  Total classes: {len(tl_labels)}")
-        print(f"  Tomato classes: {len(tl_tomato)}")
-
-    print(f"\nTomato Class Overlap (for domain adaptation):")
-    print(f"  Common tomato classes: {len(tomato_overlap)}")
-    if tomato_overlap:
-        for label in sorted(tomato_overlap):
-            pv_count = sum(1 for r in pv_data if r['label'] == label)
-            pd_count = sum(1 for r in pd_data if r['label'] == label)
-            tl_count = sum(1 for r in tl_data if r['label'] == label)
-            print(f"    {label}: PV={pv_count}, PD={pd_count}, TL={tl_count}")
+    # Check for overlaps
+    print("\nClass Overlap Analysis:")
+    for label in sorted(all_labels):
+        sources_with_label = []
+        for source_name, labels in dataset_labels.items():
+            if label in labels:
+                sources_with_label.append(source_name)
+        
+        if len(sources_with_label) > 1:
+            counts = []
+            for src in sources_with_label:
+                count = sum(1 for r in processed_data[src] if r['label'] == label)
+                counts.append(f"{src}={count}")
+            print(f"  {label}: {', '.join(counts)}")
 
     print("\n" + "=" * 60)
     print("DATASET PROCESSING COMPLETE!")
     print("=" * 60)
     print("\nOutput structure:")
-    print("  data/processed/dataset/PlantVillage/")
-    print("    └── (extracted raw data)")
-    print("  data/processed/dataset/PlantVillage_processed/")
-    print("    └── {class_label}/image-00001.jpg, image-00002.jpg, ...")
-    print("    └── labels.csv")
-    print("    └── metadata.json")
-    print("  data/processed/dataset/PlantDoc/")
-    print("    └── (extracted raw data)")
-    print("  data/processed/dataset/PlantDoc_processed/")
-    print("    └── {class_label}/image-00001.jpg, image-00002.jpg, ...")
-    print("    └── labels.csv")
-    print("    └── metadata.json")
-    print("  data/processed/dataset/TomatoLeaf/")
-    print("    └── (extracted raw data)")
-    print("  data/processed/dataset/TomatoLeaf_processed/")
-    print("    └── {class_label}/image-00001.jpg, image-00002.jpg, ...")
-    print("    └── labels.csv")
-    print("    └── metadata.json")
+    for source_name in processed_data.keys():
+        print(f"  data/processed/dataset/{source_name}_processed/")
+        print("    +-- {class_label}/image-00001.jpg, ...")
+        print("    +-- labels.csv")
+        print("    +-- metadata.json")
     print("  data/processed/dataset/combined_dataset.csv")
     print("\nTo reproduce: python process_datasets.py")
 
@@ -197,11 +155,8 @@ def main():
         return
 
     combined_path = config.paths.combined_csv
-    pv_data = processed_data.get("plantvillage", [])
-    pd_data = processed_data.get("plantdoc", [])
-    tl_data = processed_data.get("tomatoleaf", [])
-    create_combined_csv(pv_data, pd_data, tl_data, combined_path)
-    print_summary(pv_data, pd_data, tl_data)
+    create_combined_csv(processed_data, combined_path)
+    print_summary(processed_data)
 
 
 if __name__ == "__main__":

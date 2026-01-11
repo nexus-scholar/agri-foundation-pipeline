@@ -58,32 +58,20 @@ def unzip_dataset(zip_path: Path, extract_to: Path, dataset_name: str):
                         "short_name": short_name,
                         "relative_parent": str(member_path.parent)
                     })
-        print(f"Extracted {count_files(temp_extract)} files, skipped 0")
+        
+        extracted_files_count = count_files(temp_extract)
+        print(f"Extracted {extracted_files_count} files, skipped 0")
 
-        extracted_items = list(temp_extract.iterdir())
-        print(f"Found {len(extracted_items)} items in temp folder")
-        folders_to_copy = _find_folders_to_copy(extracted_items, temp_extract)
-        if not folders_to_copy:
-            print("ERROR: No content found to extract")
-            safe_rmtree(temp_extract)
-            return None
-
-        source_total = sum(count_files(f) for f in folders_to_copy)
-        print(f"Total source files to copy: {source_total}")
-
-        print("  Copying to destination...")
+        # Move everything from temp_extract to extract_to
+        print("  Moving content to destination...")
         extract_to.mkdir(parents=True, exist_ok=True)
-
-        for folder in folders_to_copy:
-            print(f"  Copying {folder.name}...")
-            # Copy contents of each folder into the destination
-            dest_subfolder = extract_to / folder.name
-            copytree(folder, dest_subfolder)
+        
+        # We use copytree to move contents. 
+        # Since extract_to exists (we just made it), copytree needs to handle merging or we just copy content of temp_extract.
+        copytree(temp_extract, extract_to)
 
         copied_total = count_files(extract_to)
         print(f"  Copy successful ({copied_total} files)")
-        if copied_total != source_total:
-            print(f"  WARNING: File count mismatch (source={source_total}, dest={copied_total})")
 
         print("Cleaning up temp folder...")
         safe_rmtree(temp_extract)
@@ -119,45 +107,3 @@ def _shorten_filename(member_path: Path, target_path: Path):
         if not short_path.exists():
             return short_name, short_path
         counter += 1
-
-
-def _find_folders_to_copy(extracted_items: list[Path], temp_extract: Path) -> list[Path]:
-    """Find all folders to copy, including case-variant duplicates."""
-    folder_info = []
-    for item in extracted_items:
-        if item.is_dir():
-            file_count = count_files(item)
-            print(f"  - {item.name}: {file_count} files")
-            folder_info.append((item, file_count, item.name.lower()))
-
-    if not folder_info:
-        total = count_files(temp_extract)
-        if total > 0:
-            print(f"Using temp folder directly: {total} files")
-            return [temp_extract]
-        return []
-
-    # Check for case-insensitive duplicates (e.g., PlantVillage and plantvillage)
-    lower_names = {}
-    for item, count, lower_name in folder_info:
-        if lower_name not in lower_names:
-            lower_names[lower_name] = []
-        lower_names[lower_name].append((item, count))
-
-    folders_to_copy = []
-
-    # If we have case duplicates, include all of them
-    for lower_name, items in lower_names.items():
-        if len(items) > 1:
-            total_files = sum(count for _, count in items)
-            names = [item.name for item, _ in items]
-            print(f"  [INFO] Found case-variant folders: {names} (total {total_files} files)")
-            print(f"  All variants will be copied and merged during processing")
-            # Add all case variants
-            for item, _ in items:
-                folders_to_copy.append(item)
-        else:
-            # Single folder, just add it
-            folders_to_copy.append(items[0][0])
-
-    return folders_to_copy

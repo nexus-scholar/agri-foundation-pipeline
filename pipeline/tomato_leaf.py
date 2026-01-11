@@ -25,10 +25,36 @@ class TomatoLeafRecord:
     source: str
 
 
+TOMATO_LEAF_CLASSES = {
+    "0": "early_blight",
+    "1": "black_spot",
+    "2": "late_blight",
+    "3": "mold",
+    "4": "bacterial_spot",
+    "5": "target_spot",
+    "6": "healthy"
+}
+
+
+def _get_class_from_yolo(label_path: Path) -> str:
+    """Read the first class index from a YOLO txt file."""
+    if not label_path.exists():
+        return "healthy"
+    try:
+        content = label_path.read_text().strip()
+        if not content:
+            return "healthy"
+        # Take the first object's class
+        first_line = content.split('\n')[0]
+        class_idx = first_line.split()[0]
+        return TOMATO_LEAF_CLASSES.get(class_idx, "healthy")
+    except Exception:
+        return "healthy"
+
+
 def process_tomato_leaf(raw_dir: Path, processed_dir: Path) -> list[dict[str, str]]:
-    """Process tomato leaf dataset into YOLO-friendly structure."""
+    """Process tomato leaf dataset into YOLO-friendly structure with specific labels."""
     raw_dir = Path(raw_dir)
-    extracted_root = raw_dir
     processed_dir = Path(processed_dir)
 
     print("\n" + "=" * 60)
@@ -48,7 +74,6 @@ def process_tomato_leaf(raw_dir: Path, processed_dir: Path) -> list[dict[str, st
         print(f"ERROR: Raw images folder not found: {raw_images_root}")
         return []
 
-    safe_rmtree(processed_dir)
     ensure_dir(processed_dir)
 
     image_out_dir = processed_dir / "images"
@@ -59,18 +84,18 @@ def process_tomato_leaf(raw_dir: Path, processed_dir: Path) -> list[dict[str, st
     records: List[dict[str, str]] = []
     stats = Counter()
 
-    # Copy raw images
+    # Copy raw images (Unannotated)
     print("Copying raw images...")
     for image_path in sorted(raw_images_root.glob("*.jpg")):
         dst = image_out_dir / image_path.name
         copy_file(image_path, dst)
         records.append({
             "filename": image_path.name,
-            "label": "unknown",
+            "label": "tomato_healthy",  # Assume healthy if in raw/unannotated? Or unknown.
             "crop": "tomato",
-            "disease": "unknown",
+            "disease": "healthy",
             "source": "tomato_leaf_raw",
-            "path": f"TomatoLeaf/images/{image_path.name}"
+            "path": f"TomatoLeaf_processed/images/{image_path.name}"
         })
         stats["raw_images"] += 1
 
@@ -82,59 +107,50 @@ def process_tomato_leaf(raw_dir: Path, processed_dir: Path) -> list[dict[str, st
         with open(rename_map_path, "r", encoding="utf-8") as f:
             renamed_data = json.load(f)
             for item in renamed_data:
-                # Normalize paths to handle separator differences
                 orig = str(Path(item["original"]))
                 short = item["short_name"]
                 short_to_orig[short] = orig
                 orig_to_short[orig] = short
 
-    # Copy annotated YOLO structure if present
+    # Copy annotated YOLO structure
     for split in YOLO_SPLITS:
         split_images = annotated_root / split / "images"
         split_labels = annotated_root / split / "labels"
         if not split_images.exists():
             continue
+        
         split_out_images = processed_dir / "annotated" / split / "images"
         split_out_labels = processed_dir / "annotated" / split / "labels"
         ensure_dir(split_out_images)
         ensure_dir(split_out_labels)
+        
         print(f"Processing annotated split: {split}")
         for image_path in sorted(split_images.glob("*.jpg")):
             dst_img = split_out_images / image_path.name
             copy_file(image_path, dst_img)
             
-            # Resolve label path using rename map
+            # Resolve label path
             label_found = False
-            
-            # 1. Determine original image path (relative to zip root)
             img_name = image_path.name
+            
             if img_name in short_to_orig:
                 orig_img_zip_path = short_to_orig[img_name]
             else:
                 try:
-                    # If not renamed, path relative to raw_dir is the zip path
                     orig_img_zip_path = str(image_path.relative_to(raw_dir))
                 except ValueError:
                     orig_img_zip_path = ""
 
+            label_name = None
             if orig_img_zip_path:
-                # 2. Derive expected original label path
-                # Replace extension with .txt (handle .jpg, .JPG, etc)
-                p = Path(orig_img_zip_path)
-                
-                # Handle images -> labels directory change
-                parts = list(p.parts)
-                # Find 'images' component and replace with 'labels'
-                # Look from the end
+                parts = list(Path(orig_img_zip_path).parts)
                 for i in range(len(parts) - 1, -1, -1):
                     if parts[i].lower() == "images":
                         parts[i] = "labels"
                         break
-                
                 p = Path(*parts)
                 orig_label_zip_path = str(p.with_suffix(".txt"))
                 
-                # 3. Find if label exists on disk (renamed or not)
                 if orig_label_zip_path in orig_to_short:
                     label_name = orig_to_short[orig_label_zip_path]
                 else:
@@ -145,32 +161,46 @@ def process_tomato_leaf(raw_dir: Path, processed_dir: Path) -> list[dict[str, st
                     copy_file(label_path, split_out_labels / label_path.name)
                     label_found = True
 
-            # Fallback to simple matching if complex logic failed
             if not label_found:
                 label_path = split_labels / (image_path.stem + ".txt")
                 if label_path.exists():
                     copy_file(label_path, split_out_labels / label_path.name)
+                    label_found = True
                 else:
-                    (split_out_labels / (image_path.stem + ".txt")).write_text("", encoding="utf-8")
+                    # Create empty label if missing
+                    label_path = split_out_labels / (image_path.stem + ".txt")
+                    label_path.write_text("", encoding="utf-8")
             
+            # Get specific disease label from YOLO file
+            disease_name = _get_class_from_yolo(split_labels / (label_name or (image_path.stem + ".txt")))
+            full_label = f"tomato_{disease_name}"
+
             stats[f"annotated_{split}"] += 1
             records.append({
                 "filename": image_path.name,
-                "label": "tomato_leaf",
+                "label": full_label,
                 "crop": "tomato",
-                "disease": "multiclass",
+                "disease": disease_name,
                 "source": f"tomato_leaf_{split}",
-                "path": f"TomatoLeaf/annotated/{split}/images/{image_path.name}"
+                "path": f"TomatoLeaf_processed/annotated/{split}/images/{image_path.name}"
             })
 
     # Save metadata
     metadata = {
         "dataset": "TomatoLeafMulticlass",
         "processed": list(stats.items()),
-        "total_records": len(records)
+        "total_records": len(records),
+        "class_mapping": TOMATO_LEAF_CLASSES
     }
     with open(processed_dir / "metadata.json", "w", encoding="utf-8") as fh:
         json.dump(metadata, fh, indent=2)
 
-    safe_rmtree(extracted_root)
+    # Save labels.csv
+    csv_path = processed_dir / "labels.csv"
+    with open(csv_path, "w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=["filename", "label", "crop", "disease", "source", "path"])
+        writer.writeheader()
+        writer.writerows(records)
+
+    safe_rmtree(raw_dir)
     return records

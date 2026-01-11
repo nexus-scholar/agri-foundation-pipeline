@@ -4,63 +4,51 @@
 
 ```mermaid
 graph TD
-    A[Raw ZIPs] -->|unzip_dataset| B[Temp Extraction]
-    B --> C{Rename if path too long}
-    C -->|write manifest| D[Renamed Files JSON]
-    C -->|copytree_long_paths| E[Processed Raw Folder]
-    E --> F[Dataset Processors]
-    F --> G[Per-dataset CSV/Metadata]
-    G --> H[combined_dataset.csv]
-    H --> I[Summary Report]
+    A[Raw ZIPs] -->|process_datasets.py| B[Extraction & Processing]
+    B --> C[Per-Dataset Processors]
+    C --> D[Combined CSV]
+    D --> E[Verification & Cleaning]
+    E --> F[Class Alignment & Merging]
+    F --> G[Final Packaging]
+    G --> H[Release Artifacts]
 ```
 
-_For slide decks/screenshots_: place rendered diagrams or UI captures under `docs/images/` (example name: `pipeline_flow.png`) and reference them with standard Markdown (`![Pipeline Flow](images/pipeline_flow.png)`).
+## Workflow Steps
 
-```text
-raw zip files ──> unzip_dataset (zip_utils)
-                    │
-                    ├─ long-path safe temp extraction
-                    ├─ rename manifest for truncated filenames
-                    └─ copytree_long_paths ──> data/processed/dataset/{Dataset}/
+### 1. Ingestion (`process_datasets.py`)
+- **Extraction:** Unzips files using `pipeline/zip_utils.py`, handling Windows long paths and nested archives.
+- **Processing:** Delegates to specific processors in `pipeline/` (e.g., `cassava.py`, `wheat.py`) to standardize folder structures and labels.
+- **Aggregation:** Generates `combined_dataset.csv` containing metadata for all 196k+ raw images.
 
-processed raw dirs ──> dataset processors (plantvillage|plantdoc|tomato_leaf)
-                        │
-                        ├─ label normalization & metadata
-                        ├─ sequential image renaming
-                        └─ CSV/JSON summaries
+### 2. Validation & Cleaning (`scripts/verify_and_clean_dataset.py`)
+- **Integrity:** Attempts to open every image with PIL to detect corruption.
+- **Deduplication:** Calculates MD5 hashes for all images. Removes duplicates (same content, same label) to prevent data leakage between overlapping sources (e.g., PlantVillage vs. NewPlantDiseases).
+- **Stratification:** Flags underrepresented classes (< 50 images).
 
-all processed CSVs ──> combined_dataset.csv + summary report
-```
+### 3. Normalization (`notebooks/disease_normalisation.ipynb`)
+- **Fuzzy Alignment:** Scans all class names to map synonyms (e.g., `Tomato_Early_Blight`, `Tomato_Early_Blight_Leaf`) to a single canonical ID.
+- **Output:** Generates `foundation_class_alignment.csv`.
 
-### Component Responsibilities
+### 4. Merging (`scripts/execute_merges.py`)
+- **Consolidation:** Physically moves folders based on the alignment report.
+- **Refinement:** Merges search-engine scraped variants (e.g., `_google`, `_bing`) into their base biological classes.
+
+### 5. Packaging (`scripts/package_for_release.py`)
+- **Structure:** Copies valid, non-duplicate images to `data/release/agri_foundation_v1/data/{label}/{image}`.
+- **Metadata:** Generates the final `metadata.csv` and `README.md`.
+
+## Component Responsibilities
 
 | Component | Responsibility |
 |-----------|----------------|
-| `pipeline/config.py` | Path resolution, CLI parsing, dataset selection. |
-| `pipeline/fs_utils.py` | Long-path safe file operations (copy, remove). |
-| `pipeline/zip_utils.py` | Incremental extraction, largest-folder detection, rename manifest. |
-| `pipeline/plantvillage.py` | Normalize folder labels, generate CSV & metadata for PlantVillage. |
-| `pipeline/plantdoc.py` | Merge train/test, normalize labels, generate CSV & metadata for PlantDoc. |
-| `pipeline/tomato_leaf.py` | Copy raw images, YOLO annotations, metadata for Tomato Leaf dataset. |
-| `process_datasets.py` | Orchestrates extraction, processing, combined CSV, console summary. |
-
-### Data Flow
-
-1. **Extraction**: Each selected dataset zip is extracted into `data/processed/dataset/{Dataset}`. A manifest (`{Dataset}_renamed_files.json`) lists files renamed for path-length reasons.
-2. **Processing**: Dataset-specific modules read the extracted folders, rename images to sequential IDs, normalize labels, and emit per-dataset CSV + metadata.
-3. **Aggregation**: `process_datasets.py` merges all CSV rows into `combined_dataset.csv` and prints cross-dataset statistics (class overlap, totals).
+| `pipeline/config.py` | Configuration constants and path resolution. |
+| `pipeline/fs_utils.py` | Low-level file operations (long-path safe copy/delete). |
+| `pipeline/data_utils.py` | Shared data utilities (CSV loading, Hashing). |
+| `pipeline/*.py` | Dataset-specific logic (e.g., parsing `train.csv` for Cassava). |
+| `scripts/` | High-level orchestration scripts for maintenance and release. |
 
 ## Dependencies
 
-Minimal runtime dependencies (see `requirements.txt`):
-
-- `pillow` (if image inspection becomes necessary in future iterations).
-- `pandas` or `polars` are purposely avoided to keep footprint small (CSV writing uses stdlib `csv`).
-
-Unit tests rely on `pytest`.
-
-## Deployment Notes
-
-- Pipeline is Windows-first but works on WSL/Linux; long-path helpers no-op on POSIX.
-- Re-running is safe; processors clear their outputs before writing new data.
-- Consider running on SSD storage; extraction and copy operations are IO-bound.
+- **Core:** `pandas`, `tqdm`, `Pillow`
+- **Optional:** `torchvision` (used in notebooks for loader verification)
+- **Environment:** Designed for Windows (handles `\?\
