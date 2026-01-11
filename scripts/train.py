@@ -206,7 +206,7 @@ def get_dataloaders(args, console_log):
         # So we must be careful.
         
         try:
-            full_dataset = ImageFolder(target_root, transform=data_transforms['train'])
+            full_dataset = ImageFolder(data_dir, transform=data_transforms['train'])
             class_names = full_dataset.classes
             # Stratified split is better
             train_idx, val_idx = train_test_split(list(range(len(full_dataset))), test_size=val_ratio, stratify=full_dataset.targets)
