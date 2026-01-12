@@ -1,0 +1,154 @@
+[
+  {
+    "source": "celery_anthracnose",
+    "target": "celery_celery_anthracnose"
+  },
+  {
+    "source": "celery_early_blight",
+    "target": "celery_celery_early_blight"
+  },
+  {
+    "source": "wheat_wheat_septoria_blotchseptoria_()",
+    "target": "wheat_wheat_septoria_blotch"
+  },
+  {
+    "source": "wheat_wheat_bacterial_streak_(black_chaff)black_chaff_()",
+    "target": "wheat_wheat_bacterial_streak_(black_chaff)"
+  },
+  {
+    "source": "wheat_wheat_bacterial_streak_(black_chaff)_black_chaff_()",
+    "target": "wheat_wheat_bacterial_streak_(black_chaff)"
+  },
+  {
+    "source": "plum_pocket_disease",
+    "target": "plum_plum_pocket_disease"
+  },
+  {
+    "source": "ginger_sheath_blight",
+    "target": "ginger_ginger_sheath_blight"
+  },
+  {
+    "source": "eggplant_cercospora_spot",
+    "target": "eggplant_eggplant_cercospora_spot"
+  },
+  {
+    "source": "basil_downy_mildew",
+    "target": "basil_basil_downy_mildew"
+  },
+  {
+    "source": "maple_tar_spot",
+    "target": "maple_maple_tar_spot"
+  },
+  {
+    "source": "ginger_ginger_spot",
+    "target": "ginger_spot"
+  },
+  {
+    "source": "coffee_rust",
+    "target": "coffee_coffee_rust"
+  },
+  {
+    "source": "broccoli_broccoli_downy_mildew",
+    "target": "broccoli_downy_mildew"
+  },
+  {
+    "source": "lettuce_downy_mildew",
+    "target": "lettuce_lettuce_downy_mildew"
+  },
+  {
+    "source": "cucumber_bacterial_wilt",
+    "target": "cucumber_cucumber_bacterial_wilt"
+  },
+  {
+    "source": "cauliflower_alternaria_spot",
+    "target": "cauliflower_cauliflower_alternaria_spot"
+  },
+  {
+    "source": "lettuce_lettuce_mosaic_virus",
+    "target": "lettuce_mosaic_virus"
+  },
+  {
+    "source": "tobacco_tobacco_mosaic_virus",
+    "target": "tobacco_mosaic_virus"
+  },
+  {
+    "source": "cucumber_powdery_mildew",
+    "target": "cucumber_cucumber_powdery_mildew"
+  },
+  {
+    "source": "bean_rust",
+    "target": "bean_bean_rust"
+  },
+  {
+    "source": "garlic_rust",
+    "target": "garlic_garlic_rust"
+  },
+  {
+    "source": "banana_banana_panama_disease",
+    "target": "banana_panama_disease"
+  },
+  {
+    "source": "bean_bean_halo_blight",
+    "target": "bean_halo_blight"
+  },
+  {
+    "source": "bean_bean_mosaic_virus",
+    "target": "bean_mosaic_virus"
+  },
+  {
+    "source": "cabbage_cabbage_alternaria_spot",
+    "target": "cabbage_alternaria_spot"
+  },
+  {
+    "source": "citrus_canker",
+    "target": "citrus_citrus_canker"
+  },
+  {
+    "source": "citrus_greening_disease",
+    "target": "citrus_citrus_greening_disease"
+  },
+  {
+    "source": "cucumber_angular_spot",
+    "target": "cucumber_cucumber_angular_spot"
+  },
+  {
+    "source": "garlic_blight",
+    "target": "garlic_garlic_blight"
+  },
+  {
+    "source": "rice_blast",
+    "target": "rice_rice_blast"
+  },
+  {
+    "source": "rice_rice_sheath_blight",
+    "target": "rice_sheath_blight"
+  },
+  {
+    "source": "zucchini_yellow_mosaic_virus",
+    "target": "zucchini_zucchini_yellow_mosaic_virus"
+  },
+  {
+    "source": "grape_vine_roll_disease",
+    "target": "grape_vine_vine_roll_disease"
+  },
+  {
+    "source": "pepper_,_bell_bacterial_spot",
+    "target": "pepper_bell_bacterial_spot"
+  },
+  {
+    "source": "pepper_bell_bell_bacterial_spot",
+    "target": "pepper_bell_bacterial_spot"
+  },
+  {
+    "source": "pepper_,_bell_healthy",
+    "target": "pepper_bell_healthy"
+  },
+  {
+    "source": "tomato_spider_mites_two-spotted_spider_mite",
+    "target": "tomato_spider_mites_two_spotted_spider_mite"
+  },
+  {
+    "source": "tomato_yellow_virus",
+    "target": "tomato_yellow_curl_virus"
+  }
+]
