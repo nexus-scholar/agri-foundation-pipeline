@@ -498,5 +498,33 @@
   {
     "source": "zucchini_zucchini_yellow_mosaic_virus",
     "target": "zucchini_yellow_mosaic_virus"
+  },
+  {
+    "source": "orange_haunglongbing_(citrus_greening)",
+    "target": "orange_huanglongbing_(citrus_greening)"
+  },
+  {
+    "source": "wheat_fusariumfootrot",
+    "target": "wheat_fusarium_foot_rot"
+  },
+  {
+    "source": "wheat_healthyleaf",
+    "target": "wheat_healthy"
+  },
+  {
+    "source": "wheat_wheatblast",
+    "target": "wheat_blast"
+  },
+  {
+    "source": "tomato_spider_mites_two_spotted_spider_mite",
+    "target": "tomato_two_spotted_spider_mite"
+  },
+  {
+    "source": "wheat_septoria_blotch_blotch_()",
+    "target": "wheat_septoria_blotch"
+  },
+  {
+    "source": "wheat_leafblight",
+    "target": "wheat_leaf_blight"
   }
 ]
