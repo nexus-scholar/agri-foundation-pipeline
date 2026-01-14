@@ -50,13 +50,12 @@ def upload_dataset(repo_id, token=None):
     print("Files will be uploaded in chunks.")
     
     try:
-        url = api.upload_folder(
+        # Use upload_large_folder for robust handling of 145k+ files
+        print("Using upload_large_folder strategy...")
+        api.upload_large_folder(
             folder_path=str(DATASET_DIR),
             repo_id=repo_id,
-            repo_type="dataset",
-            path_in_repo=".",  # Upload to root of the repo
-            multi_commits=True,
-            multi_commits_verbose=True
+            repo_type="dataset"
         )
         print("\n" + "="*40)
         print("UPLOAD COMPLETE")

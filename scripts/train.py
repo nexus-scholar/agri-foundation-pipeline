@@ -44,7 +44,7 @@ def get_args_interactive():
     console.print(Panel.fit("[bold cyan]Agricultural Vision - Training Config Wizard[/bold cyan]", border_style="blue"))
     
     # 1. Dataset
-    data_dir = questionary.path("Dataset directory:", default="../data/release").ask()
+    data_dir = questionary.path("Dataset directory:", default="data/release").ask()
     
     # 2. Data Split Strategy
     split_strategy = questionary.select(
@@ -86,7 +86,7 @@ def get_args_interactive():
     image_size = int(questionary.text("Image size:", default="256").ask())
     
     # 5. Misc
-    output_dir = questionary.path("Output directory:", default="../models/foundational").ask()
+    output_dir = questionary.path("Output directory:", default="models/foundational").ask()
     seed = int(questionary.text("Random seed:", default="42").ask())
     use_cuda = questionary.confirm("Use CUDA if available?", default=True).ask()
     
@@ -111,8 +111,8 @@ def get_args():
         return get_args_interactive()
 
     parser = argparse.ArgumentParser(description="Train MobileNet Foundational Models")
-    parser.add_argument('--data_dir', type=str, default='../data/release', help='Path to dataset')
-    parser.add_argument('--output_dir', type=str, default='../models/foundational', help='Directory to save models')
+    parser.add_argument('--data_dir', type=str, default='data/release', help='Path to dataset')
+    parser.add_argument('--output_dir', type=str, default='models/foundational', help='Directory to save models')
     parser.add_argument('--models', type=str, nargs='+', 
                         default=['mobilenetv4_conv_medium.e500_r256_in1k'],
                         help='List of timm model names to train')

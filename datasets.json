@@ -62,5 +62,21 @@
     "processed_dir": "PlantWild_processed",
     "processor": "pipeline.plantwild:process_plantwild",
     "url": ""
+  },
+  {
+    "name": "rocole",
+    "zip_name": "RoCoLe.zip",
+    "raw_dir": "RoCoLe",
+    "processed_dir": "RoCoLe_processed",
+    "processor": "pipeline.rocole:process_rocole",
+    "url": ""
+  },
+  {
+    "name": "plantpathology2021",
+    "zip_name": "plant-pathology-2021-fgvc8.zip",
+    "raw_dir": "PlantPathology2021",
+    "processed_dir": "PlantPathology2021_processed",
+    "processor": "pipeline.plant_pathology:process_plant_pathology",
+    "url": ""
   }
 ]

@@ -3,10 +3,36 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import zipfile
 from pathlib import Path
 
 from .fs_utils import copytree, count_files, ensure_dir, safe_rmtree
+
+
+def zip_folder(folder_path: Path, output_path: Path):
+    """Zip the contents of a folder into a zip file with progress updates."""
+    print(f"Zipping {folder_path} to {output_path}...")
+    
+    # Get total file count for progress
+    files_to_zip = []
+    for root, _, files in os.walk(folder_path):
+        for file in files:
+            files_to_zip.append(Path(root) / file)
+    
+    total_files = len(files_to_zip)
+    print(f"Found {total_files} files to compress.")
+
+    with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_STORED) as zipf:
+        for i, file_path in enumerate(files_to_zip):
+            arcname = file_path.relative_to(folder_path)
+            zipf.write(file_path, arcname)
+            
+            if (i + 1) % 1000 == 0:
+                print(f"Archived {i + 1}/{total_files} files...")
+
+    print(f"Successfully created {output_path}")
+    return output_path
 
 
 def unzip_dataset(zip_path: Path, extract_to: Path, dataset_name: str):

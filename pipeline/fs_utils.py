@@ -60,10 +60,21 @@ def safe_rmtree(path: Path, attempts: int = 3):
 
 
 def copy_file(src: Path, dst: Path):
-    """Copy a file preserving metadata while supporting long paths."""
+    """Copy a file preserving metadata while supporting long paths. Attempts hardlink first."""
     src = Path(src)
     dst = Path(dst)
     ensure_dir(dst.parent)
+    
+    # Try hardlink to save space (0 bytes)
+    try:
+        if dst.exists():
+            dst.unlink()
+        os.link(_win_path(src), _win_path(dst))
+        return
+    except OSError:
+        # Fallback to copy if cross-device or link not supported
+        pass
+
     try:
         shutil.copy2(src, dst)
         return

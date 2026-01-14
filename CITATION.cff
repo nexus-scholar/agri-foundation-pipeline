@@ -10,7 +10,7 @@ abstract: >-
 version: 1.0.0
 date-released: 2025-12-13
 license: MIT
-repository-code: "https://github.com/[username]/dataset-processing"
+repository-code: "https://github.com/nexus-scholar/dataset-processing"
 keywords:
   - partial-domain-adaptation
   - active-learning
@@ -31,10 +31,10 @@ preferred-citation:
   type: article
   title: "Bridging the Lab-to-Field Gap: Partial Domain Adaptation for Agricultural Edge AI"
   authors:
-    - family-names: "[Last Name]"
-      given-names: "[First Name]"
+    - family-names: "BEKHOUCHE"
+      given-names: "MOUADH"
   journal: "[Target Journal Name]"
-  year: 2025
+  year: 2026
   volume: 0
   issue: 0
   start: 0

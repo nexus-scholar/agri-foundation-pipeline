@@ -67,6 +67,18 @@ Generate the final release folder.
 python scripts/package_for_release.py
 ```
 
+**4. Publish**
+Upload to Hugging Face or Zenodo.
+```bash
+# Upload to Hugging Face
+python scripts/upload_to_hf.py --repo-id your-username/agri-foundation-145k
+
+# Upload to Zenodo (Archival)
+python scripts/upload_to_zenodo.py --token YOUR_TOKEN --creator "Mouadh Bekhouche"
+
+**Official Release:** [Zenodo Record 18214758](https://zenodo.org/records/18214758)
+```
+
 ## 📊 Documentation
 
 *   [**Dataset Preparation Guide**](docs/DATASET_PREPARATION.md): Step-by-step reproduction instructions.
@@ -78,13 +90,13 @@ python scripts/package_for_release.py
 If you use this pipeline or dataset in your research, please cite:
 
 ```bibtex
-@misc{agri_foundation_pipeline,
-  author = {Your Name},
-  title = {Agri-Foundation Dataset Processing Pipeline},
+@misc{agri_foundation_145k,
+  author = {Bekhouche, Mouadh},
+  title = {Agri-Foundation-145k: A Unified Large-Scale Dataset for Agricultural Disease Detection},
   year = {2026},
-  publisher = {GitHub},
-  journal = {GitHub repository},
-  howpublished = {\url{https://github.com/yourusername/dataset-processing}}
+  publisher = {Zenodo},
+  doi = {10.5281/zenodo.18214758},
+  url = {https://zenodo.org/records/18214758}
 }
 ```
 
